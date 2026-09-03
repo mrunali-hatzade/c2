@@ -1,0 +1,44 @@
+package com.cakeplatform.api.modules.shop.controller;
+
+import com.cakeplatform.api.modules.shop.dto.ShopResponse;
+import com.cakeplatform.api.modules.shop.dto.UpdateShopRequest;
+import com.cakeplatform.api.modules.shop.dto.OwnerDashboardStatsResponse;
+import com.cakeplatform.api.modules.shop.service.OwnerDashboardService;
+import com.cakeplatform.api.modules.shop.service.ShopService;
+import com.cakeplatform.api.security.CustomUserDetails;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/shops")
+@RequiredArgsConstructor
+public class ShopController {
+
+    private final ShopService shopService;
+    private final OwnerDashboardService dashboardService;
+
+    @GetMapping("/my-shop")
+    public ResponseEntity<ShopResponse> getMyShopProfile(
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        return ResponseEntity.ok(shopService.getMyShopProfile(userDetails.getId()));
+    }
+
+    @PutMapping("/my-shop")
+    public ResponseEntity<ShopResponse> updateMyShopProfile(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody UpdateShopRequest request
+    ) {
+        return ResponseEntity.ok(shopService.updateMyShopProfile(userDetails.getId(), request));
+    }
+
+    @GetMapping("/my-shop/stats")
+    public ResponseEntity<OwnerDashboardStatsResponse> getDashboardStats(
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        return ResponseEntity.ok(dashboardService.getDashboardStats(userDetails.getId()));
+    }
+}

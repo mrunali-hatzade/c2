@@ -1,0 +1,47 @@
+### Cake Platform API - Order Tests
+@baseUrl = http://localhost:8080/api/owner/orders
+@authUrl = http://localhost:8080/api/auth
+
+### =========================================
+### 0. Authenticate to get Token
+### =========================================
+# @name loginUser
+POST {{authUrl}}/login
+Content-Type: application/json
+
+{
+    "email": "owner@example.com",
+    "password": "Password123!"
+}
+
+### Store the token from the login response
+@token = {{loginUser.response.body.$.token}}
+
+### =========================================
+### 1. Order Management Tests
+### =========================================
+
+### 1a. List all Orders for my Shop
+# @name listOrders
+GET {{baseUrl}}
+Authorization: Bearer {{token}}
+
+### 1b. Get details of a specific Order
+# Replace the ID '1' with an actual order ID if your database is populated
+GET {{baseUrl}}/1
+Authorization: Bearer {{token}}
+
+### 1c. Update Order Status
+# Replace the ID '1' with an actual order ID
+PATCH {{baseUrl}}/1/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "status": "PREPARING"
+}
+
+### 1d. Download Order Invoice (PDF)
+# Replace the ID '1' with an actual order ID
+GET {{baseUrl}}/1/invoice
+Authorization: Bearer {{token}}

@@ -1,0 +1,56 @@
+### Cake Platform API - Public Customer Storefront Tests
+@baseUrl = http://localhost:8080/api/storefront/shops
+# Replace with the shop ID you want to test against (must be ACTIVE)
+@shopId = 4
+
+### =========================================
+### 1. View Public Shop Profile
+### =========================================
+GET {{baseUrl}}/{{shopId}}
+
+### =========================================
+### 1.5. Search Nearby Shops (Location based)
+### =========================================
+GET {{baseUrl}}/search?location=Akurdi
+
+### =========================================
+### 2. View Active Products
+### =========================================
+# @name getProducts
+GET {{baseUrl}}/{{shopId}}/products
+
+### =========================================
+### 3. Place a Guest Order
+### =========================================
+# @name placeGuestOrder
+POST {{baseUrl}}/{{shopId}}/orders
+Content-Type: application/json
+
+{
+    "customerName": "Alice Smith",
+    "customerEmail": "alice@example.com",
+    "customerPhone": "+1234567890",
+    "paymentMethod": "COD",
+    "deliveryAddress": "123 Customer Lane, City",
+    "deliveryDate": "2026-10-15",
+    "deliverySlotId": 1,
+    "couponCode": "WELCOME20",
+    "items": [
+        {
+            "productId": 13,
+            "variantId": 1,
+            "quantity": 5,
+            "dietaryPreference": "EGGLESS",
+            "cakeMessage": "Happy Birthday Alice!",
+            "addonIds": [1]
+        }
+    ]
+}
+
+### Store the generated orderNumber
+@orderNumber = {{placeGuestOrder.response.body.orderNumber}}
+
+### =========================================
+### 4. Download Invoice (Customer)
+### =========================================
+GET http://localhost:8080/api/storefront/shops/orders/{{orderNumber}}/invoice

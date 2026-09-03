@@ -1,0 +1,68 @@
+### Cake Platform API - Admin Dashboard Tests
+@baseUrl = http://localhost:8080/api/admin
+@authUrl = http://localhost:8080/api/auth
+
+### =========================================
+### 0. Register & Authenticate as Admin
+### =========================================
+
+### 0a. Promote John Doe to Admin
+POST {{authUrl}}/make-admin
+Content-Type: application/json
+
+{
+    "email": "john.doe@example.com"
+}
+
+### 0b. Login as John Doe (now an Admin)
+# @name loginAdmin
+POST {{authUrl}}/login
+Content-Type: application/json
+
+{
+    "email": "john.doe@example.com",
+    "password": "Password123!"
+}
+
+### Store the token from the login response
+@token = {{loginAdmin.response.body.$.token}}
+
+### =========================================
+### 1. View Dashboard Stats
+### =========================================
+GET {{baseUrl}}/dashboard/stats
+Authorization: Bearer {{token}}
+
+### =========================================
+### 2. List All Shops
+### =========================================
+GET {{baseUrl}}/shops
+Authorization: Bearer {{token}}
+
+### =========================================
+### 3. View Shop Details (Replace '1' with your shop ID)
+### =========================================
+GET {{baseUrl}}/shops/1
+Authorization: Bearer {{token}}
+
+### =========================================
+### 4. Suspend Shop
+### =========================================
+PATCH {{baseUrl}}/shops/1/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "status": "SUSPENDED"
+}
+
+### =========================================
+### 5. Un-Suspend (Reactivate) Shop
+### =========================================
+PATCH {{baseUrl}}/shops/1/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "status": "ACTIVE"
+}

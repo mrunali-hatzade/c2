@@ -1,0 +1,85 @@
+package com.cakeplatform.api.modules.subscription;
+
+import com.cakeplatform.api.modules.notification.NotificationService;
+import com.cakeplatform.api.modules.notification.NotificationType;
+import com.cakeplatform.api.modules.shop.Shop;
+import com.cakeplatform.api.modules.user.User;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
+
+@Service
+@EnableScheduling
+@RequiredArgsConstructor
+@Slf4j
+public class SubscriptionScheduler {
+
+    private final SubscriptionRepository subscriptionRepository;
+    private final NotificationService notificationService;
+
+    @Scheduled(cron = "0 0 0 * * ?")
+    public void processSubscriptionExpiries() {
+        log.info("Running daily subscription expiry check...");
+        
+        List<Subscription> activeSubscriptions = subscriptionRepository.findAll().stream()
+                .filter(s -> s.getStatus() == SubscriptionStatus.ACTIVE)
+                .toList();
+
+        LocalDateTime now = LocalDateTime.now();
+
+        for (Subscription sub : activeSubscriptions) {
+            if (sub.getExpiryDate() == null) continue;
+
+            long daysUntilExpiry = ChronoUnit.DAYS.between(now.toLocalDate(), sub.getExpiryDate().toLocalDate());
+
+            if (daysUntilExpiry == 7 || daysUntilExpiry == 5 || daysUntilExpiry == 3 || daysUntilExpiry == 1) {
+                sendExpiringNotification(sub, daysUntilExpiry);
+            } else if (daysUntilExpiry <= 0) {
+                handleExpiredSubscription(sub);
+            }
+        }
+    }
+
+    private void sendExpiringNotification(Subscription sub, long daysLeft) {
+        Shop shop = sub.getShop();
+        User owner = shop.getOwner();
+        String message = String.format("Your subscription for %s is expiring in %d days. Please renew to avoid service interruption.", 
+                                        shop.getBusinessName(), daysLeft);
+                                        
+        notificationService.createNotification(
+                owner,
+                NotificationType.SUBSCRIPTION_EXPIRING,
+                "Subscription Expiring Soon",
+                message,
+                sub.getId().toString(),
+                true
+        );
+        log.info("Sent expiring notification to Shop ID {}", shop.getId());
+    }
+
+    private void handleExpiredSubscription(Subscription sub) {
+        sub.setStatus(SubscriptionStatus.EXPIRED);
+        subscriptionRepository.save(sub);
+
+        Shop shop = sub.getShop();
+        User owner = shop.getOwner();
+        String message = String.format("Your subscription for %s has expired. Your shop is now hidden from customers.", 
+                                        shop.getBusinessName());
+
+        notificationService.createNotification(
+                owner,
+                NotificationType.SUBSCRIPTION_EXPIRED,
+                "Subscription Expired",
+                message,
+                sub.getId().toString(),
+                true
+        );
+        log.info("Subscription expired for Shop ID {}", shop.getId());
+    }
+}

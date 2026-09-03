@@ -1,0 +1,57 @@
+### Cake Platform API - Coupons & Discounts Tests
+@baseUrl = http://localhost:8080/api/owner/coupons
+@authUrl = http://localhost:8080/api/auth
+
+### =========================================
+### 0. Authenticate as Owner
+### =========================================
+# @name loginUser
+POST {{authUrl}}/login
+Content-Type: application/json
+
+{
+    "email": "owner@example.com",
+    "password": "Password123!"
+}
+
+### Store token
+@token = {{loginUser.response.body.$.token}}
+
+### =========================================
+### 1. Create a PERCENTAGE Coupon
+### =========================================
+POST {{baseUrl}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "code": "WELCOME20",
+    "discountType": "PERCENTAGE",
+    "discountValue": 20.00,
+    "maxDiscountCap": 50.00,
+    "minOrderValue": 100.00,
+    "usageLimit": 100,
+    "isActive": true
+}
+
+### =========================================
+### 2. Create a FLAT Coupon
+### =========================================
+POST {{baseUrl}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "code": "MINUS50",
+    "discountType": "FLAT",
+    "discountValue": 50.00,
+    "minOrderValue": 200.00,
+    "usageLimit": 10,
+    "isActive": true
+}
+
+### =========================================
+### 3. List My Coupons
+### =========================================
+GET {{baseUrl}}
+Authorization: Bearer {{token}}

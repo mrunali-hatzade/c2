@@ -1,0 +1,60 @@
+package com.cakeplatform.api.modules.product.controller;
+
+import com.cakeplatform.api.modules.product.Product;
+import com.cakeplatform.api.modules.product.dto.ProductRequest;
+import com.cakeplatform.api.modules.product.service.ProductService;
+import com.cakeplatform.api.security.CustomUserDetails;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/owner/products")
+@PreAuthorize("hasRole('SHOP_OWNER')")
+@RequiredArgsConstructor
+public class OwnerProductController {
+
+    private final ProductService productService;
+
+    @GetMapping
+    public ResponseEntity<List<Product>> getProducts(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(productService.getProductsByUserId(userDetails.getId()));
+    }
+
+    @PostMapping
+    @org.springframework.cache.annotation.CacheEvict(value = "shopProducts", allEntries = true)
+    public ResponseEntity<Product> createProduct(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody ProductRequest request) {
+        
+        Product product = productService.createProduct(userDetails.getId(), request);
+        return ResponseEntity.ok(product);
+    }
+
+    @PutMapping("/{id}")
+    @org.springframework.cache.annotation.CacheEvict(value = "shopProducts", allEntries = true)
+    public ResponseEntity<Product> updateProduct(
+            @PathVariable Long id,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody ProductRequest request) {
+        
+        Product product = productService.updateProduct(id, userDetails.getId(), request);
+        return ResponseEntity.ok(product);
+    }
+
+    @DeleteMapping("/{id}")
+    @org.springframework.cache.annotation.CacheEvict(value = "shopProducts", allEntries = true)
+    public ResponseEntity<?> deleteProduct(
+            @PathVariable Long id,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        
+        productService.deleteProduct(id, userDetails.getId());
+        return ResponseEntity.ok(Map.of("message", "Product deleted successfully"));
+    }
+}

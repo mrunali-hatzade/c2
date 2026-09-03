@@ -1,0 +1,48 @@
+### Cake Platform API - Shop Payouts
+@baseUrl = http://localhost:8080/api/shops/my-shop/payouts
+@authUrl = http://localhost:8080/api/auth
+
+### =========================================
+### 0. Authenticate to get Token
+### =========================================
+# @name loginUser
+POST {{authUrl}}/login
+Content-Type: application/json
+
+{
+    "email": "owner@example.com",
+    "password": "Password123!"
+}
+
+### Store the token from the login response
+@token = {{loginUser.response.body.$.token}}
+
+### =========================================
+### 1. Update Payout Details (Bank)
+### =========================================
+POST {{baseUrl}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "bankAccountNumber": "1234567890",
+    "ifscCode": "HDFC0001234",
+    "beneficiaryName": "John Doe Bakeries"
+}
+
+### =========================================
+### 2. Update Payout Details (UPI)
+### =========================================
+POST {{baseUrl}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "upiId": "johndoe@hdfcbank"
+}
+
+### =========================================
+### 3. Get Payout Details
+### =========================================
+GET {{baseUrl}}
+Authorization: Bearer {{token}}

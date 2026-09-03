@@ -1,0 +1,36 @@
+### Cake Platform API - Verification & Documents
+@baseUrl = http://localhost:8080/api/verification
+@authUrl = http://localhost:8080/api/auth
+
+### =========================================
+### 0. Authenticate to get Token
+### =========================================
+# @name loginUser
+POST {{authUrl}}/login
+Content-Type: application/json
+
+{
+    "email": "owner@example.com",
+    "password": "Password123!"
+}
+
+### Store the token from the login response
+@token = {{loginUser.response.body.$.token}}
+
+### =========================================
+### 1. Upload Document
+### =========================================
+POST {{baseUrl}}/documents
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "documentType": "FSSAI_CERTIFICATE",
+    "fileUrl": "https://example.com/documents/fssai_cert_123.pdf"
+}
+
+### =========================================
+### 2. View My Documents
+### =========================================
+GET {{baseUrl}}/documents
+Authorization: Bearer {{token}}

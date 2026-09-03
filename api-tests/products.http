@@ -1,0 +1,110 @@
+### Cake Platform API - Product Tests
+@baseUrl = http://localhost:8080/api/owner/products
+@authUrl = http://localhost:8080/api/auth
+
+### =========================================
+### 0. Authenticate to get Token
+### =========================================
+# @name loginUser
+POST {{authUrl}}/login
+Content-Type: application/json
+
+{
+    "email": "owner@example.com",
+    "password": "Password123!"
+}
+
+### Store the token from the login response
+@token = {{loginUser.response.body.$.token}}
+
+### =========================================
+### 1. Product CRUD Tests
+### =========================================
+
+### 1a. Create a Product
+# @name createProduct
+POST {{baseUrl}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "name": "Chocolate Truffle Cake",
+    "description": "Rich and dense chocolate cake with a truffle glaze.",
+    "price": 25.99,
+    "imageUrl": "https://example.com/choco-truffle.jpg",
+    "availability": true,
+    "variants": [
+        {
+            "name": "0.5 kg",
+            "price": 15.00
+        },
+        {
+            "name": "1 kg",
+            "price": 25.99
+        }
+    ],
+    "addons": [
+        {
+            "name": "Sparkle Candle",
+            "price": 2.50
+        },
+        {
+            "name": "Photo Print",
+            "price": 10.00
+        }
+    ]
+}
+
+### Store the newly created product ID
+@productId = {{createProduct.response.body.id}}
+
+### 1b. Create another Product
+POST {{baseUrl}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "name": "Strawberry Shortcake",
+    "description": "Light sponge cake with fresh strawberries and whipped cream.",
+    "price": 19.50,
+    "imageUrl": "https://example.com/strawberry.jpg",
+    "availability": true
+}
+
+### 1c. List all Products for my Shop
+GET {{baseUrl}}
+Authorization: Bearer {{token}}
+
+### 1d. Update a Product (Change price and availability)
+PUT {{baseUrl}}/{{productId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "name": "Chocolate Truffle Cake (Premium)",
+    "description": "Updated description with extra truffle.",
+    "price": 29.99,
+    "imageUrl": "https://example.com/choco-truffle-premium.jpg",
+    "availability": false
+}
+
+### 1e. Delete a Product
+DELETE {{baseUrl}}/{{productId}}
+Authorization: Bearer {{token}}
+
+### 1f. Verify Deletion (List products again)
+GET {{baseUrl}}
+Authorization: Bearer {{token}}
+
+### =========================================
+### 2. Validation Tests
+### =========================================
+
+### 2a. Missing required fields (Name and Price)
+POST {{baseUrl}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "description": "This should fail because name and price are missing."
+}

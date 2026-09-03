@@ -1,0 +1,75 @@
+### Cake Platform API - Shop Tests
+@baseUrl = http://localhost:8080/api/shops
+@authUrl = http://localhost:8080/api/auth
+
+### =========================================
+### 0. Authenticate to get Token
+### =========================================
+# @name loginUser
+POST {{authUrl}}/login
+Content-Type: application/json
+
+{
+    "email": "owner@example.com",
+    "password": "Password123!"
+}
+
+### Store the token from the login response
+@token = {{loginUser.response.body.$.token}}
+
+### =========================================
+### 1. Shop Profile Tests
+### =========================================
+
+### 2. View My Shop Profile
+GET {{baseUrl}}/my-shop
+Authorization: Bearer {{token}}
+
+### 3. View Owner Dashboard Stats
+GET {{baseUrl}}/my-shop/stats
+Authorization: Bearer {{token}}
+
+### 1b. Update My Shop Profile
+PUT {{baseUrl}}/my-shop
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "businessName": "John's Premium Cakes",
+    "description": "The best custom cakes in town! We specialize in wedding and birthday cakes.",
+    "phone": "+1999888777",
+    "address": "123 Baker Street",
+    "city": "London",
+    "state": "Greater London",
+    "pincode": "NW1 6XE",
+    "businessCategory": "Bakery",
+    "logoUrl": "https://example.com/logo.png",
+    "coverImageUrl": "https://example.com/cover.png"
+}
+
+### 1c. Update with Invalid Data (Validation Error)
+PUT {{baseUrl}}/my-shop
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "businessName": "A",
+    "phone": "This phone number is way too long to be valid for the database limit of 15 characters"
+}
+
+### 1d. Unauthenticated Access (Should fail with 401)
+GET {{baseUrl}}/my-shop
+
+### =========================================
+### Create Delivery Slot
+### =========================================
+POST http://localhost:8080/api/owner/delivery-slots
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "dayOfWeek": "EVERYDAY",
+    "startTime": "10:00:00",
+    "endTime": "14:00:00",
+    "maxOrders": 20
+}

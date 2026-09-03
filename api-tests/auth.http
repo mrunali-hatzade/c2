@@ -1,0 +1,159 @@
+### Cake Platform API - Auth Tests
+@baseUrl = http://localhost:8080/api/auth
+
+### =========================================
+### 1. Registration Tests
+### =========================================
+
+### 1a. Register ADMIN account (John Doe)
+# Run this FIRST, then promote via admin.http -> 0a. Promote to Admin
+POST {{baseUrl}}/register
+Content-Type: application/json
+
+{
+    "fullName": "John Doe",
+    "email": "john.doe@example.com",
+    "password": "Password123!",
+    "mobile": "+1-555-0001",
+    "businessName": "Admin Test Shop",
+    "businessType": "OTHER",
+    "businessDescription": "Admin account for platform management.",
+    "addressLine1": "HQ Office",
+    "area": "Hinjawadi",
+    "city": "Pune",
+    "district": "Pune",
+    "state": "Maharashtra",
+    "pincode": "411057",
+    "latitude": 18.5912,
+    "longitude": 73.7380
+}
+
+### 1b. Register SHOP OWNER account (Jane Doe)
+# @name Register a new Shop Owner
+POST {{baseUrl}}/register
+Content-Type: application/json
+
+{
+    "fullName": "Jane Doe",
+    "email": "owner@example.com",
+    "password": "Password123!",
+    "mobile": "+1-555-0100",
+    "businessName": "Jane's Amazing Cakes",
+    "businessType": "HOME_BAKERY",
+    "businessDescription": "Best home baked cakes in Pune.",
+    "yearsInBusiness": 2,
+    "fssaiRegistration": "12345678901234",
+    "addressLine1": "Apt 4B, Baker Street",
+    "area": "Akurdi",
+    "city": "Pune",
+    "district": "Pune",
+    "state": "Maharashtra",
+    "pincode": "411044",
+    "latitude": 18.6500,
+    "longitude": 73.7800
+}
+
+### 1c. Duplicate Email (should fail with "Email already exists")
+POST {{baseUrl}}/register
+Content-Type: application/json
+
+{
+    "fullName": "Jane Doe",
+    "email": "owner@example.com",
+    "password": "Password123!",
+    "mobile": "+1987654321",
+    "businessName": "Jane's Cakes",
+    "businessType": "HOME_BAKERY",
+    "addressLine1": "Some Street",
+    "area": "Akurdi",
+    "city": "Pune",
+    "state": "Maharashtra",
+    "pincode": "411044"
+}
+
+### 1d. Invalid Email format
+POST {{baseUrl}}/register
+Content-Type: application/json
+
+{
+    "fullName": "Invalid Email User",
+    "email": "not-an-email",
+    "password": "Password123!",
+    "mobile": "+1122334455",
+    "businessName": "Bad Email Shop",
+    "businessType": "HOME_BAKERY",
+    "addressLine1": "Some Street",
+    "city": "Pune",
+    "state": "Maharashtra",
+    "pincode": "411044"
+}
+
+### 1e. Weak Password (Too short)
+POST {{baseUrl}}/register
+Content-Type: application/json
+
+{
+    "fullName": "Weak Password User",
+    "email": "weak@example.com",
+    "password": "123",
+    "mobile": "+1122334455",
+    "businessName": "Weak Pass Shop",
+    "businessType": "HOME_BAKERY",
+    "addressLine1": "Some Street",
+    "city": "Pune",
+    "state": "Maharashtra",
+    "pincode": "411044"
+}
+
+### 1f. Missing Fields (Tests that missing fields are caught)
+POST {{baseUrl}}/register
+Content-Type: application/json
+
+{
+    "email": "missing.fields@example.com",
+    "password": "Password123!"
+}
+
+### =========================================
+### 2. Login Tests
+### =========================================
+
+### 2a. Successful Login (PENDING Shop)
+# Expected result: Returns token and shopStatus: "PENDING"
+# @name loginUser
+POST {{baseUrl}}/login
+Content-Type: application/json
+
+{
+    "email": "owner@example.com",
+    "password": "Password123!"
+}
+
+### 2b. Invalid Password
+POST {{baseUrl}}/login
+Content-Type: application/json
+
+{
+    "email": "owner@example.com",
+    "password": "WrongPassword!"
+}
+
+### 2c. Non-existing User
+POST {{baseUrl}}/login
+Content-Type: application/json
+
+{
+    "email": "does.not.exist@example.com",
+    "password": "Password123!"
+}
+
+### 2d. SUSPENDED shop login
+# To test this, you must manually update the shop status in the database to 'SUSPENDED'
+# UPDATE shops SET status = 'SUSPENDED' WHERE email = 'owner@example.com';
+POST {{baseUrl}}/login
+Content-Type: application/json
+
+{
+    "email": "owner@example.com",
+    "password": "Password123!"
+}

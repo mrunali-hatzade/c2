@@ -1,0 +1,41 @@
+### Cake Platform API - Admin Subscription Plans
+@baseUrl = http://localhost:8080/api/admin/plans
+@authUrl = http://localhost:8080/api/auth
+
+### =========================================
+### 0. Authenticate to get Token (Admin)
+### =========================================
+# @name loginAdmin
+POST {{authUrl}}/login
+Content-Type: application/json
+
+{
+    "email": "john.doe@example.com", 
+    "password": "Password123!"
+}
+
+### Store the token
+@token = {{loginAdmin.response.body.$.token}}
+
+### =========================================
+### 1. Create a Subscription Plan
+### =========================================
+POST {{baseUrl}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "name": "Pro Baker Plan",
+    "description": "Unlimited products and priority support",
+    "price": 999.00,
+    "currency": "INR",
+    "durationDays": 30,
+    "features": "[\"Unlimited Products\", \"Custom Domain\", \"0% Commission\"]",
+    "isActive": true
+}
+
+### =========================================
+### 2. Get All Plans
+### =========================================
+GET {{baseUrl}}
+Authorization: Bearer {{token}}
