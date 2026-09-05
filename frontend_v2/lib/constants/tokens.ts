@@ -7,15 +7,15 @@ export const DESIGN_TOKENS = {
   colors: {
     // Customer / Marketplace / Storefront
     brand: {
-      plum: '#C56E56',
-      plumHover: '#B05B44',
-      crimson: '#A8383B',
-      creamLight: '#FCFAF7',
-      cream: '#F7F2EC',
-      blush: '#FDF2EF',
-      espresso: '#2B1822',
-      muted: '#7A6B74',
-      border: '#EFE8EB',
+      plum: '#5B2333',
+      plumHover: '#4A1525',
+      crimson: '#9E2A2B',
+      creamLight: '#FAF7F2',
+      cream: '#F5EBE1',
+      blush: '#FCEFEF',
+      espresso: '#2B1810',
+      muted: '#786C65',
+      border: '#EBDCCD',
       surface: '#FFFFFF',
     },
     // Bakery Owner Dashboard

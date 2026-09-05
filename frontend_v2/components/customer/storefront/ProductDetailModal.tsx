@@ -17,15 +17,24 @@ interface ProductDetailModalProps {
   onClose: () => void;
   product: Product | null;
   shop: Shop;
+  onOpenCustomQuote?: () => void;
 }
 
 const FALLBACK_CAKE = 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=800&q=80';
+
+const WEIGHT_OPTIONS = [
+  { weight: 0.5, label: '0.5 kg', serves: '4-6 serves' },
+  { weight: 1.0, label: '1.0 kg', serves: '8-12 serves' },
+  { weight: 1.5, label: '1.5 kg', serves: '14-18 serves' },
+  { weight: 2.0, label: '2.0 kg', serves: '20-25 serves' },
+];
 
 export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   isOpen,
   onClose,
   product,
   shop,
+  onOpenCustomQuote,
 }) => {
   const { addItem, clearCart, currentShopName } = useCart();
   const toast = useToast();
@@ -155,27 +164,54 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               'Artisanal gourmet cake freshly prepared with authentic ingredients. Perfect for birthdays, anniversaries, and personal celebrations.'}
           </p>
 
-          {/* Sizing / Weight Multiplier */}
-          <div className="space-y-1.5 pt-1">
-            <label className="text-xs font-bold text-brand-espresso">
-              Select Cake Weight
-            </label>
+          {/* Sizing / Weight Multiplier with Serving Guide */}
+          <div className="space-y-2 pt-1">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-brand-espresso">
+                Select Cake Weight & Serving
+              </label>
+              <span className="text-[11px] text-brand-plum font-medium">
+                {WEIGHT_OPTIONS.find((w) => w.weight === selectedWeight)?.serves}
+              </span>
+            </div>
             <div className="grid grid-cols-4 gap-2">
-              {[0.5, 1, 1.5, 2].map((weight) => (
+              {WEIGHT_OPTIONS.map((opt) => (
                 <button
-                  key={weight}
+                  key={opt.weight}
                   type="button"
-                  onClick={() => setSelectedWeight(weight)}
-                  className={`py-2 px-2 rounded-xl text-xs font-semibold border transition-all ${
-                    selectedWeight === weight
+                  onClick={() => setSelectedWeight(opt.weight)}
+                  className={`py-2 px-1 rounded-xl text-center border transition-all ${
+                    selectedWeight === opt.weight
                       ? 'bg-brand-plum text-white border-brand-plum shadow-xs'
                       : 'bg-white text-brand-espresso border-brand-border hover:bg-brand-cream/50'
                   }`}
                 >
-                  {weight} kg
+                  <span className="block text-xs font-bold">{opt.label}</span>
+                  <span
+                    className={`block text-[10px] mt-0.5 ${
+                      selectedWeight === opt.weight ? 'text-white/80' : 'text-brand-muted'
+                    }`}
+                  >
+                    {opt.serves}
+                  </span>
                 </button>
               ))}
             </div>
+            {onOpenCustomQuote && (
+              <p className="text-[11px] text-brand-muted text-right pt-0.5">
+                Need a 2-tier or custom themed design?{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onOpenCustomQuote();
+                  }}
+                  className="text-brand-plum font-bold hover:underline"
+                >
+                  Request custom quote
+                </button>
+              </p>
+            )}
           </div>
 
           {/* Custom Message on Cake */}

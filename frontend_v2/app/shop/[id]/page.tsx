@@ -11,6 +11,7 @@ import { StorefrontNavbar } from '@/components/customer/storefront/StorefrontNav
 import { StorefrontBanner } from '@/components/customer/storefront/StorefrontBanner';
 import { ProductCard } from '@/components/customer/storefront/ProductCard';
 import { ProductDetailModal } from '@/components/customer/storefront/ProductDetailModal';
+import { CustomCakeInquiryModal } from '@/components/customer/storefront/CustomCakeInquiryModal';
 import { CartDrawer } from '@/components/customer/storefront/CartDrawer';
 import { StorefrontCheckoutModal } from '@/components/customer/storefront/StorefrontCheckoutModal';
 import { Footer } from '@/components/common/Footer';
@@ -37,6 +38,7 @@ export default function StorefrontPage() {
   // Product Detail / Customization Modal
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState<boolean>(false);
+  const [isCustomInquiryOpen, setIsCustomInquiryOpen] = useState<boolean>(false);
 
   const loadStorefrontData = useCallback(async () => {
     if (!shopId) return;
@@ -143,6 +145,15 @@ export default function StorefrontPage() {
             >
               🌱 Eggless Only
             </button>
+
+            {/* Custom Cake Inquiry Button */}
+            <button
+              onClick={() => setIsCustomInquiryOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-brand-plum text-brand-plum hover:bg-brand-plum hover:text-white text-xs font-semibold transition-all shadow-2xs shrink-0"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Request Custom Cake</span>
+            </button>
           </div>
         </div>
 
@@ -188,6 +199,14 @@ export default function StorefrontPage() {
         isOpen={isDetailModalOpen}
         onClose={() => setIsDetailModalOpen(false)}
         product={selectedProduct}
+        shop={shop}
+        onOpenCustomQuote={() => setIsCustomInquiryOpen(true)}
+      />
+
+      {/* Bespoke Custom Cake Inquiry Modal */}
+      <CustomCakeInquiryModal
+        isOpen={isCustomInquiryOpen}
+        onClose={() => setIsCustomInquiryOpen(false)}
         shop={shop}
       />
 

@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Store, SlidersHorizontal } from 'lucide-react';
+import { Store, SlidersHorizontal, MapPin } from 'lucide-react';
 import { Shop } from '@/types/shop';
 import { BakeryCard } from './BakeryCard';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
+import { INDIAN_POPULAR_PLACES } from '@/lib/constants/indianLocations';
 
 interface BakeryGridProps {
   shops: Shop[];
@@ -45,12 +46,15 @@ export const BakeryGrid: React.FC<BakeryGridProps> = ({
         </div>
 
         {/* Filter Controls */}
-        <div className="flex items-center gap-3 self-start sm:self-auto">
+        <div className="flex flex-wrap items-center gap-3 self-start sm:self-auto">
           <span className="text-xs font-medium text-brand-muted">
             {shops.length} {shops.length === 1 ? 'bakery' : 'bakeries'} available
           </span>
+
+
+
           <div className="flex items-center gap-1.5 text-xs text-brand-espresso border border-brand-border rounded-xl px-2.5 py-1.5 bg-white shadow-subtle">
-            <SlidersHorizontal className="w-3.5 h-3.5 text-brand-plum" />
+            <SlidersHorizontal className="w-3.5 h-3.5 text-brand-plum shrink-0" />
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}

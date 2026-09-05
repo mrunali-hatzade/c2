@@ -10,6 +10,8 @@ import { SearchBar } from '@/components/common/SearchBar';
 import { BakeryGrid } from '@/components/customer/marketplace/BakeryGrid';
 import { CategoryPills, CategoryOption } from '@/components/customer/marketplace/CategoryPills';
 
+import { AdvancedLocationFilter } from '@/components/customer/marketplace/AdvancedLocationFilter';
+
 function ExploreContent() {
   const searchParams = useSearchParams();
   const initialSearch = searchParams.get('search') || '';
@@ -85,7 +87,11 @@ function ExploreContent() {
         />
       </div>
 
-
+      {/* Advanced Location Filter */}
+      <AdvancedLocationFilter 
+        onLocationSelect={(loc) => setLocationQuery(loc === 'All Locations' ? '' : loc)}
+        shopCount={shops.length}
+      />
 
       {/* Category Pills */}
       <div className="flex justify-center mb-10">
@@ -107,6 +113,7 @@ function ExploreContent() {
             ? `Showing verified kitchens delivering freshly baked celebration cakes in ${locationQuery}`
             : 'Connect directly with certified creators for custom quotes and order delivery across India'
         }
+
       />
     </main>
   );

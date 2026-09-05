@@ -248,6 +248,48 @@ export default function OwnerSettingsPage() {
 
         {/* Right Column: Visuals & Hours */}
         <div className="lg:col-span-4 space-y-6">
+          {/* Live Storefront Preview Card */}
+          <Card className="p-0 overflow-hidden border-0 shadow-md ring-1 ring-owner-border">
+            <div className="relative h-48 w-full bg-owner-canvas overflow-hidden">
+              <img
+                src={settings.coverImageUrl || "https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=1200&q=80"}
+                alt="Bakery Cover"
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=1200&q=80";
+                }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+
+              {/* Bakery Identity Overlay */}
+              <div className="absolute bottom-4 left-5 right-5 flex items-end gap-3 text-white">
+                <div className="w-16 h-16 rounded-2xl bg-white border-2 border-white shadow-md overflow-hidden shrink-0 flex items-center justify-center text-brand-plum font-bold text-xl">
+                  {settings.logoUrl ? (
+                    <img 
+                      src={settings.logoUrl} 
+                      alt="Logo" 
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                  ) : (
+                    <span>{settings.businessName?.slice(0, 2).toUpperCase() || 'BA'}</span>
+                  )}
+                </div>
+
+                <div className="min-w-0 pb-1">
+                  <h3 className="text-lg font-bold font-serif truncate drop-shadow-sm">
+                    {settings.businessName || 'Your Bakery Name'}
+                  </h3>
+                  <p className="text-xs text-gray-200 truncate opacity-90">
+                    {settings.city ? `${settings.city} • ` : ''}{settings.businessType ? settings.businessType.replace('_', ' ') : 'Artisan Bakery'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </Card>
+
           {/* Visual Showcase Card */}
           <Card className="p-6 space-y-4">
             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-brand-plum border-b border-owner-border pb-3">

@@ -10,17 +10,17 @@ const config: Config = {
     extend: {
       colors: {
         brand: {
-          plum: '#C56E56',
-          'plum-hover': '#B05B44',
-          'plum-dark': '#8E3E2B',
-          crimson: '#A8383B',
-          'cream-light': '#FCFAF7',
-          cream: '#F7F2EC',
-          blush: '#FDF2EF',
-          'blush-border': '#F8D7E1',
-          espresso: '#2B1822',
-          muted: '#7A6B74',
-          border: '#EFE8EB',
+          plum: '#5B2333',
+          'plum-hover': '#4A1525',
+          'plum-dark': '#3D101E',
+          crimson: '#9E2A2B',
+          'cream-light': '#FAF7F2',
+          cream: '#F5EBE1',
+          blush: '#FCEFEF',
+          'blush-border': '#F5EBE6',
+          espresso: '#2B1810',
+          muted: '#786C65',
+          border: '#EBDCCD',
           gold: '#F59E0B',
         },
         owner: {

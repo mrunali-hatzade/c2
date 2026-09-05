@@ -9,8 +9,11 @@ import { Footer } from '@/components/common/Footer';
 import { HeroSection } from '@/components/customer/marketplace/HeroSection';
 import { BakeryGrid } from '@/components/customer/marketplace/BakeryGrid';
 import { TrustBadges } from '@/components/customer/marketplace/TrustBadges';
+
 import { OwnerCTA } from '@/components/customer/marketplace/OwnerCTA';
 import { CategoryOption } from '@/components/customer/marketplace/CategoryPills';
+
+import { AdvancedLocationFilter } from '@/components/customer/marketplace/AdvancedLocationFilter';
 
 export default function HomePage() {
   const router = useRouter();
@@ -84,6 +87,14 @@ export default function HomePage() {
           onSelectLocation={(loc) => setLocationQuery(loc)}
         />
 
+        {/* Standalone Advanced Location Filter */}
+        <div className="px-4 sm:px-6 lg:px-8">
+          <AdvancedLocationFilter
+            onLocationSelect={(loc) => setLocationQuery(loc === 'All Locations' ? '' : loc)}
+            shopCount={shops.length}
+          />
+        </div>
+
         {/* Featured Bakeries Grid */}
         <BakeryGrid
           shops={shops}
@@ -98,7 +109,14 @@ export default function HomePage() {
               ? `Showing verified kitchens delivering freshly baked celebration cakes in ${locationQuery}`
               : 'Direct ordering from verified kitchens with dedicated in-store fulfillment across Indian cities'
           }
+
         />
+
+        {/* How CakeStore Works: 3 Step Ordering Journey */}
+        
+
+        {/* Real Customer Stories & Testimonials */}
+        
 
         {/* Trust & Food Safety Guarantees */}
         <TrustBadges />
