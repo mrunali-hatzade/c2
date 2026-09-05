@@ -1,0 +1,143 @@
+/**
+ * Centralized CakeStore API Client
+ * Connects to Spring Boot Backend on http://localhost:8080
+ */
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+
+export class ApiError extends Error {
+  status: number;
+  data?: any;
+
+  constructor(status: number, message: string, data?: any) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.data = data;
+  }
+}
+
+export interface RequestOptions extends RequestInit {
+  params?: Record<string, string | number | boolean | undefined | null>;
+  token?: string | null;
+}
+
+export function getStoredToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('cakestore_token');
+}
+
+export function setStoredToken(token: string): void {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('cakestore_token', token);
+  }
+}
+
+export function clearStoredToken(): void {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('cakestore_token');
+    localStorage.removeItem('cakestore_user');
+  }
+}
+
+async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
+  const { params, token, headers = {}, ...rest } = options;
+
+  let url = `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+
+  if (params) {
+    const searchParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, val]) => {
+      if (val !== undefined && val !== null && val !== '') {
+        searchParams.append(key, String(val));
+      }
+    });
+    const queryString = searchParams.toString();
+    if (queryString) {
+      url += (url.includes('?') ? '&' : '?') + queryString;
+    }
+  }
+
+  const effectiveToken = token ?? getStoredToken();
+
+  const reqHeaders: Record<string, string> = {
+    Accept: 'application/json',
+    ...(headers as Record<string, string>),
+  };
+
+  if (!(rest.body instanceof FormData) && !reqHeaders['Content-Type']) {
+    reqHeaders['Content-Type'] = 'application/json';
+  }
+
+  if (effectiveToken) {
+    reqHeaders['Authorization'] = `Bearer ${effectiveToken}`;
+  }
+
+  try {
+    const response = await fetch(url, {
+      ...rest,
+      headers: reqHeaders,
+      signal: rest.signal || AbortSignal.timeout(5000),
+    });
+
+    if (response.status === 204) {
+      return {} as T;
+    }
+
+    let responseData: any = null;
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      responseData = await response.json();
+    } else {
+      const text = await response.text();
+      try {
+        responseData = JSON.parse(text);
+      } catch {
+        responseData = text;
+      }
+    }
+
+    if (!response.ok) {
+      const errorMessage =
+        (typeof responseData === 'object' && responseData !== null && (responseData.message || responseData.error)) ||
+        `Request failed with status ${response.status}`;
+      throw new ApiError(response.status, errorMessage, responseData);
+    }
+
+    return responseData as T;
+  } catch (error: any) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    throw new ApiError(500, error.message || 'Network request failed', error);
+  }
+}
+
+export const apiClient = {
+  get: <T>(endpoint: string, options?: RequestOptions) =>
+    request<T>(endpoint, { ...options, method: 'GET' }),
+
+  post: <T>(endpoint: string, body?: any, options?: RequestOptions) =>
+    request<T>(endpoint, {
+      ...options,
+      method: 'POST',
+      body: body instanceof FormData ? body : JSON.stringify(body),
+    }),
+
+  put: <T>(endpoint: string, body?: any, options?: RequestOptions) =>
+    request<T>(endpoint, {
+      ...options,
+      method: 'PUT',
+      body: body instanceof FormData ? body : JSON.stringify(body),
+    }),
+
+  patch: <T>(endpoint: string, body?: any, options?: RequestOptions) =>
+    request<T>(endpoint, {
+      ...options,
+      method: 'PATCH',
+      body: body instanceof FormData ? body : JSON.stringify(body),
+    }),
+
+  delete: <T>(endpoint: string, options?: RequestOptions) =>
+    request<T>(endpoint, { ...options, method: 'DELETE' }),
+};

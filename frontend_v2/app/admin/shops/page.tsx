@@ -1,0 +1,326 @@
+'use client';
+
+import React, { useEffect, useState, useMemo } from 'react';
+import Link from 'next/link';
+import {
+  Store,
+  Search,
+  CheckCircle2,
+  XCircle,
+  AlertTriangle,
+  ExternalLink,
+  ShieldCheck,
+  ShieldAlert,
+  Clock,
+  Filter,
+  RefreshCw,
+} from 'lucide-react';
+import { getAllShops, updateShopStatus } from '@/lib/api/admin';
+import { AdminShopSummary } from '@/types/admin';
+import { Card } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { LoadingState } from '@/components/ui/LoadingState';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { useToast } from '@/components/common/Toast';
+
+type FilterTab = 'ALL' | 'PENDING' | 'ACTIVE' | 'SUSPENDED';
+
+export default function AdminShopsPage() {
+  const [shops, setShops] = useState<AdminShopSummary[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState<FilterTab>('ALL');
+  const [mutatingId, setMutatingId] = useState<number | null>(null);
+  const toast = useToast();
+
+  const fetchShops = React.useCallback(async (isManual = false) => {
+    if (isManual) setRefreshing(true);
+    else setIsLoading(true);
+
+    try {
+      const data = await getAllShops();
+      setShops(data || []);
+    } catch {
+      toast.error('Failed to load bakery directory');
+    } finally {
+      setIsLoading(false);
+      setRefreshing(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    fetchShops();
+  }, [fetchShops]);
+
+  const handleStatusChange = async (shopId: number, newStatus: string) => {
+    setMutatingId(shopId);
+    try {
+      await updateShopStatus(shopId, newStatus);
+      toast.success(`Bakery #${shopId} status changed to ${newStatus}`);
+      // Optimistic update
+      setShops((prev) =>
+        prev.map((s) => (s.shopId === shopId ? { ...s, shopStatus: newStatus } : s))
+      );
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update bakery status');
+    } finally {
+      setMutatingId(null);
+    }
+  };
+
+  // Filtered & searched bakeries
+  const filteredShops = useMemo(() => {
+    return shops.filter((s) => {
+      const matchesSearch =
+        s.businessName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (s.ownerName && s.ownerName.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (s.ownerEmail && s.ownerEmail.toLowerCase().includes(searchQuery.toLowerCase()));
+
+      if (!matchesSearch) return false;
+
+      if (activeTab === 'ALL') return true;
+      if (activeTab === 'PENDING') return s.shopStatus === 'PENDING' || s.shopStatus === 'PENDING_APPROVAL';
+      return s.shopStatus === activeTab;
+    });
+  }, [shops, searchQuery, activeTab]);
+
+  const counts = useMemo(() => {
+    return {
+      all: shops.length,
+      pending: shops.filter((s) => s.shopStatus === 'PENDING' || s.shopStatus === 'PENDING_APPROVAL').length,
+      active: shops.filter((s) => s.shopStatus === 'ACTIVE').length,
+      suspended: shops.filter((s) => s.shopStatus === 'SUSPENDED').length,
+    };
+  }, [shops]);
+
+  const getStatusBadge = (status: string) => {
+    const s = status.toUpperCase();
+    if (s === 'ACTIVE') return <Badge variant="success" size="sm">Active</Badge>;
+    if (s === 'PENDING' || s === 'PENDING_APPROVAL') return <Badge variant="warning" size="sm">Pending KYC</Badge>;
+    if (s === 'SUSPENDED') return <Badge variant="error" size="sm">Suspended</Badge>;
+    if (s === 'REJECTED') return <Badge variant="default" size="sm">Rejected</Badge>;
+    return <Badge variant="default" size="sm">{status}</Badge>;
+  };
+
+  if (isLoading) return <LoadingState message="Loading bakery directory & compliance registry..." />;
+
+  return (
+    <div className="space-y-6">
+      {/* Page Title & Refresh */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="font-serif font-bold text-2xl sm:text-3xl text-slate-900">
+            Bakery Directory & Moderation
+          </h1>
+          <p className="text-xs text-slate-500 mt-1">
+            Audit FSSAI credentials, inspect bakery onboarding, and manage store operational status
+          </p>
+        </div>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => fetchShops(true)}
+          disabled={refreshing}
+          className="self-start sm:self-auto gap-2"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+          <span>Refresh</span>
+        </Button>
+      </div>
+
+      {/* Controls Bar: Tabs & Search */}
+      <Card className="p-4 border-slate-200 shadow-soft space-y-4 sm:space-y-0 sm:flex sm:items-center sm:justify-between gap-4">
+        {/* Status Filter Tabs */}
+        <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100 rounded-xl">
+          <button
+            onClick={() => setActiveTab('ALL')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              activeTab === 'ALL'
+                ? 'bg-white text-slate-900 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            All ({counts.all})
+          </button>
+          <button
+            onClick={() => setActiveTab('PENDING')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+              activeTab === 'PENDING'
+                ? 'bg-white text-amber-900 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <span>Pending KYC</span>
+            {counts.pending > 0 && (
+              <span className="w-5 h-5 rounded-full bg-amber-500 text-white text-[10px] flex items-center justify-center font-bold">
+                {counts.pending}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('ACTIVE')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              activeTab === 'ACTIVE'
+                ? 'bg-white text-emerald-900 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            Active ({counts.active})
+          </button>
+          <button
+            onClick={() => setActiveTab('SUSPENDED')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              activeTab === 'SUSPENDED'
+                ? 'bg-white text-rose-900 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            Suspended ({counts.suspended})
+          </button>
+        </div>
+
+        {/* Search Input */}
+        <div className="w-full sm:w-72 relative">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none z-10" />
+          <Input
+            placeholder="Search by bakery or owner..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+      </Card>
+
+      {/* Bakeries Table */}
+      {filteredShops.length === 0 ? (
+        <EmptyState
+          icon={<Store className="w-8 h-8 text-slate-400" />}
+          title="No Bakeries Found"
+          description={
+            searchQuery
+              ? `No bakeries matching "${searchQuery}" in the ${activeTab.toLowerCase()} category.`
+              : `No bakeries currently in the ${activeTab.toLowerCase()} category.`
+          }
+        />
+      ) : (
+        <Card className="overflow-hidden border-slate-200/80 shadow-soft">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-500 font-semibold">
+                  <th className="py-3.5 px-5">Bakery Name & ID</th>
+                  <th className="py-3.5 px-4">Owner Profile</th>
+                  <th className="py-3.5 px-4">Registration Date</th>
+                  <th className="py-3.5 px-4">Status</th>
+                  <th className="py-3.5 px-5 text-right">Moderation Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredShops.map((shop) => {
+                  const isMutating = mutatingId === shop.shopId;
+
+                  return (
+                    <tr key={shop.shopId} className="hover:bg-slate-50/50 transition-colors">
+                      {/* Name & ID */}
+                      <td className="py-4 px-5">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center font-bold text-sm shrink-0">
+                            {shop.businessName.charAt(0)}
+                          </div>
+                          <div>
+                            <Link
+                              href={`/admin/shops/${shop.shopId}`}
+                              className="font-bold text-slate-900 hover:text-indigo-600 transition-colors flex items-center gap-1.5"
+                            >
+                              <span>{shop.businessName}</span>
+                              <ExternalLink className="w-3 h-3 text-slate-400" />
+                            </Link>
+                            <span className="text-[11px] text-slate-400 font-mono">
+                              Tenant #{shop.shopId}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Owner Profile */}
+                      <td className="py-4 px-4">
+                        <p className="font-semibold text-slate-800">{shop.ownerName || '—'}</p>
+                        <p className="text-[11px] text-slate-400">{shop.ownerEmail || '—'}</p>
+                      </td>
+
+                      {/* Registration Date */}
+                      <td className="py-4 px-4 text-slate-600">
+                        {shop.registeredAt
+                          ? new Date(shop.registeredAt).toLocaleDateString('en-IN', {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric',
+                            })
+                          : '—'}
+                      </td>
+
+                      {/* Status */}
+                      <td className="py-4 px-4">
+                        {getStatusBadge(shop.shopStatus)}
+                      </td>
+
+                      {/* Action Buttons */}
+                      <td className="py-4 px-5 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Link href={`/admin/shops/${shop.shopId}`}>
+                            <Button variant="outline" size="sm" className="text-xs">
+                              Dossier
+                            </Button>
+                          </Link>
+
+                          {shop.shopStatus !== 'ACTIVE' && (
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              disabled={isMutating}
+                              onClick={() => handleStatusChange(shop.shopId, 'ACTIVE')}
+                              className="bg-emerald-600 hover:bg-emerald-700 border-emerald-700 text-xs px-2.5 py-1"
+                            >
+                              Approve
+                            </Button>
+                          )}
+
+                          {shop.shopStatus === 'ACTIVE' && (
+                            <Button
+                              variant="danger"
+                              size="sm"
+                              disabled={isMutating}
+                              onClick={() => handleStatusChange(shop.shopId, 'SUSPENDED')}
+                              className="text-xs px-2.5 py-1"
+                            >
+                              Suspend
+                            </Button>
+                          )}
+
+                          {shop.shopStatus === 'PENDING' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled={isMutating}
+                              onClick={() => handleStatusChange(shop.shopId, 'REJECTED')}
+                              className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 text-xs px-2 py-1"
+                            >
+                              Reject
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}

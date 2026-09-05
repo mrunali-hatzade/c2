@@ -1,0 +1,375 @@
+'use client';
+
+import React, { useEffect, useState } from 'react';
+import {
+  CreditCard,
+  Check,
+  Plus,
+  Edit2,
+  Power,
+  RefreshCw,
+  Clock,
+  Sparkles,
+  ShieldCheck,
+} from 'lucide-react';
+import {
+  getAllPlans,
+  createPlan,
+  updatePlan,
+  togglePlanStatus,
+} from '@/lib/api/admin';
+import { AdminPlan } from '@/types/admin';
+import { Card } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
+import { Modal } from '@/components/ui/Modal';
+import { Input } from '@/components/ui/Input';
+import { Textarea } from '@/components/ui/Textarea';
+import { LoadingState } from '@/components/ui/LoadingState';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { useToast } from '@/components/common/Toast';
+
+export default function AdminPlansPage() {
+  const [plans, setPlans] = useState<AdminPlan[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingPlan, setEditingPlan] = useState<AdminPlan | null>(null);
+  const toast = useToast();
+
+  const [form, setForm] = useState({
+    name: '',
+    description: '',
+    price: 999,
+    currency: 'INR',
+    durationDays: 30,
+    features: '',
+    isActive: true,
+  });
+
+  const loadPlans = React.useCallback(async (isManual = false) => {
+    if (isManual) setRefreshing(true);
+    else setIsLoading(true);
+
+    try {
+      const data = await getAllPlans();
+      setPlans(data || []);
+    } catch {
+      toast.error('Failed to load subscription plans');
+    } finally {
+      setIsLoading(false);
+      setRefreshing(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    loadPlans();
+  }, [loadPlans]);
+
+  const openCreateModal = () => {
+    setEditingPlan(null);
+    setForm({
+      name: '',
+      description: '',
+      price: 999,
+      currency: 'INR',
+      durationDays: 30,
+      features: 'Up to 50 Products, WhatsApp Ordering, Custom Branding, Analytics',
+      isActive: true,
+    });
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (plan: AdminPlan) => {
+    setEditingPlan(plan);
+    setForm({
+      name: plan.name,
+      description: plan.description || '',
+      price: plan.price,
+      currency: plan.currency || 'INR',
+      durationDays: plan.durationDays || 30,
+      features: plan.features || '',
+      isActive: plan.isActive,
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name.trim()) {
+      toast.error('Please enter a valid plan name');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      if (editingPlan) {
+        const updated = await updatePlan(editingPlan.id, form);
+        setPlans((prev) =>
+          prev.map((p) => (p.id === editingPlan.id ? { ...p, ...updated } : p))
+        );
+        toast.success(`Plan "${form.name}" updated successfully`);
+      } else {
+        const created = await createPlan(form);
+        setPlans((prev) => [...prev, created]);
+        toast.success(`Plan "${form.name}" created successfully`);
+      }
+      setIsModalOpen(false);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to save subscription plan');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleToggleStatus = async (plan: AdminPlan) => {
+    const nextStatus = !plan.isActive;
+    try {
+      await togglePlanStatus(plan.id, nextStatus);
+      setPlans((prev) =>
+        prev.map((p) => (p.id === plan.id ? { ...p, isActive: nextStatus } : p))
+      );
+      toast.success(
+        `Plan "${plan.name}" is now ${nextStatus ? 'active' : 'disabled'}`
+      );
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to toggle plan status');
+    }
+  };
+
+  if (isLoading) return <LoadingState message="Loading SaaS subscription tiers..." />;
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="font-serif font-bold text-2xl sm:text-3xl text-slate-900">
+            SaaS Subscription Plans
+          </h1>
+          <p className="text-xs text-slate-500 mt-1">
+            Configure pricing tiers, product quota limits, and platform features for bakery owners
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => loadPlans(true)}
+            disabled={refreshing}
+            className="gap-1.5"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+            <span>Refresh</span>
+          </Button>
+
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={openCreateModal}
+            className="bg-indigo-600 hover:bg-indigo-700 border-indigo-700 gap-1.5"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Create Plan</span>
+          </Button>
+        </div>
+      </div>
+
+      {/* Plans Grid */}
+      {plans.length === 0 ? (
+        <EmptyState
+          icon={<CreditCard className="w-8 h-8 text-slate-400" />}
+          title="No Subscription Plans Configured"
+          description="Create your first SaaS pricing tier for bakery owners to select upon onboarding."
+          action={
+            <Button variant="primary" size="sm" onClick={openCreateModal}>
+              Create First Plan
+            </Button>
+          }
+        />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {plans.map((plan) => {
+            const featureList = (plan.features || '')
+              .split(',')
+              .map((f) => f.trim())
+              .filter(Boolean);
+
+            return (
+              <Card
+                key={plan.id}
+                className={`p-6 flex flex-col justify-between border-slate-200 shadow-soft hover:shadow-card transition-all ${
+                  !plan.isActive ? 'opacity-70 bg-slate-50/70' : ''
+                }`}
+              >
+                <div>
+                  {/* Top Bar */}
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-serif font-bold text-lg text-slate-900">
+                      {plan.name}
+                    </h3>
+                    <Badge variant={plan.isActive ? 'success' : 'default'} size="sm">
+                      {plan.isActive ? 'Active' : 'Disabled'}
+                    </Badge>
+                  </div>
+
+                  <p className="text-xs text-slate-500 mt-2 min-h-10 line-clamp-2">
+                    {plan.description || 'Standard bakery subscription tier.'}
+                  </p>
+
+                  {/* Price */}
+                  <div className="mt-4 pb-4 border-b border-slate-100">
+                    <p className="text-3xl font-bold font-serif text-slate-900">
+                      ₹{plan.price.toLocaleString('en-IN')}
+                      <span className="text-xs font-normal text-slate-500">
+                        {' '}/ {plan.durationDays} days
+                      </span>
+                    </p>
+                    <span className="text-[11px] text-indigo-600 font-medium">
+                      Currency: {plan.currency || 'INR'}
+                    </span>
+                  </div>
+
+                  {/* Features */}
+                  <div className="mt-4 space-y-2 text-xs text-slate-600">
+                    {featureList.length > 0 ? (
+                      featureList.map((feature, idx) => (
+                        <div key={idx} className="flex items-start gap-2">
+                          <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                          <span>{feature}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-slate-400 italic">No specific feature tags listed.</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Card Footer Actions */}
+                <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openEditModal(plan)}
+                    className="gap-1.5 text-xs flex-1"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                    <span>Edit Tier</span>
+                  </Button>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleToggleStatus(plan)}
+                    className={`gap-1.5 text-xs ${
+                      plan.isActive
+                        ? 'text-rose-600 hover:bg-rose-50'
+                        : 'text-emerald-600 hover:bg-emerald-50'
+                    }`}
+                  >
+                    <Power className="w-3.5 h-3.5" />
+                    <span>{plan.isActive ? 'Disable' : 'Enable'}</span>
+                  </Button>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Plan Modal (Create / Edit) */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title={editingPlan ? `Edit Tier: ${editingPlan.name}` : 'Create Subscription Plan'}
+        description="Configure pricing, billing cycle duration, and feature access for bakery owners."
+      >
+        <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+          <Input
+            label="Plan Name"
+            required
+            placeholder="e.g. Master Patisserie Pro"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+          />
+
+          <Textarea
+            label="Description"
+            rows={2}
+            placeholder="Short overview of the tier target audience..."
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+          />
+
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Price (₹)"
+              type="number"
+              min={0}
+              required
+              value={form.price}
+              onChange={(e) => setForm({ ...form, price: Number(e.target.value) })}
+            />
+
+            <Input
+              label="Duration (Days)"
+              type="number"
+              min={1}
+              required
+              value={form.durationDays}
+              onChange={(e) => setForm({ ...form, durationDays: Number(e.target.value) })}
+            />
+          </div>
+
+          <Textarea
+            label="Features (comma-separated)"
+            rows={3}
+            placeholder="Unlimited Products, Custom Domain, WhatsApp Bot, 0% Commission"
+            value={form.features}
+            onChange={(e) => setForm({ ...form, features: e.target.value })}
+            helperText="Separate features with a comma to render them as bullet checklist items."
+          />
+
+          <div className="flex items-center gap-2 pt-2">
+            <input
+              type="checkbox"
+              id="isActive"
+              checked={form.isActive}
+              onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
+              className="rounded text-indigo-600 focus:ring-indigo-500"
+            />
+            <label htmlFor="isActive" className="text-xs font-semibold text-slate-700 cursor-pointer">
+              Active plan (available for bakery owners to select)
+            </label>
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              disabled={isSubmitting}
+              className="bg-indigo-600 hover:bg-indigo-700 border-indigo-700"
+            >
+              {isSubmitting
+                ? 'Saving...'
+                : editingPlan
+                ? 'Save Changes'
+                : 'Create Plan'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+    </div>
+  );
+}

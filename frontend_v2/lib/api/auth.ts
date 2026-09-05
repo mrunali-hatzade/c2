@@ -1,0 +1,35 @@
+import { apiClient } from './client';
+import { LoginRequest, LoginResponse, RegisterFormData } from '@/types/auth';
+
+export const authApi = {
+  login: async (credentials: LoginRequest): Promise<LoginResponse> => {
+    return apiClient.post<LoginResponse>('/api/auth/login', credentials);
+  },
+
+  register: async (formData: RegisterFormData): Promise<any> => {
+    const data = new FormData();
+    data.append('fullName', formData.fullName);
+    data.append('email', formData.email);
+    data.append('password', formData.password);
+    data.append('mobile', formData.mobile);
+    data.append('businessName', formData.businessName);
+    if (formData.businessType) data.append('businessType', formData.businessType);
+    if (formData.businessDescription) data.append('businessDescription', formData.businessDescription);
+    if (formData.businessPhone) data.append('businessPhone', formData.businessPhone);
+    if (formData.businessEmail) data.append('businessEmail', formData.businessEmail);
+    if (formData.yearsInBusiness !== undefined) data.append('yearsInBusiness', String(formData.yearsInBusiness));
+    data.append('addressLine1', formData.addressLine1);
+    if (formData.addressLine2) data.append('addressLine2', formData.addressLine2);
+    if (formData.area) data.append('area', formData.area);
+    data.append('city', formData.city);
+    if (formData.district) data.append('district', formData.district);
+    data.append('state', formData.state);
+    data.append('pincode', formData.pincode);
+    if (formData.fssaiRegistration) data.append('fssaiRegistration', formData.fssaiRegistration);
+    if (formData.verificationFile) {
+      data.append('verificationFile', formData.verificationFile);
+    }
+
+    return apiClient.post('/api/auth/register', data);
+  },
+};

@@ -148,7 +148,9 @@ public class AuthService {
         }
 
         CustomUserDetails userDetails = new CustomUserDetails(user);
-        String jwtToken = jwtService.generateToken(userDetails);
+        java.util.Map<String, Object> extraClaims = new java.util.HashMap<>();
+        extraClaims.put("role", user.getRole().name());
+        String jwtToken = jwtService.generateToken(extraClaims, userDetails);
 
         return AuthResponse.builder()
                 .token(jwtToken)

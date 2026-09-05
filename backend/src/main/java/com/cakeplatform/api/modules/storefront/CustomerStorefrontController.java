@@ -71,6 +71,11 @@ public class CustomerStorefrontController {
         return ResponseEntity.ok(storefrontService.placeGuestOrder(shopId, request));
     }
 
+    @GetMapping("/orders/{orderNumber}")
+    public ResponseEntity<Order> getGuestOrderDetails(@PathVariable String orderNumber) {
+        return ResponseEntity.ok(storefrontService.getGuestOrder(orderNumber));
+    }
+
     @GetMapping("/orders/{orderNumber}/invoice")
     public ResponseEntity<byte[]> downloadInvoice(
             @PathVariable String orderNumber,
