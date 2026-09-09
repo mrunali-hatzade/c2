@@ -128,73 +128,79 @@ export default function AdminOverviewPage() {
           <p className="text-3xl font-bold font-serif text-slate-900 mt-3">
             {stats?.totalShops ?? 0}
           </p>
-          <div className="flex items-center gap-2 mt-2 text-xs">
-            <span className="text-emerald-700 font-medium">
-              {stats?.activeShops ?? 0} active
-            </span>
+          <div className="flex flex-wrap items-center gap-1.5 mt-2 text-xs">
+            <span className="text-emerald-700 font-medium">{stats?.activeShops ?? 0} active</span>
             <span className="text-slate-300">•</span>
-            <span className="text-amber-700 font-medium">
-              {stats?.pendingShops ?? 0} pending
-            </span>
+            <span className="text-amber-700 font-medium">{stats?.pendingShops ?? 0} pending</span>
             <span className="text-slate-300">•</span>
-            <span className="text-rose-700 font-medium">
-              {stats?.suspendedShops ?? 0} suspended
-            </span>
+            <span className="text-rose-700 font-medium">{stats?.suspendedShops ?? 0} suspended</span>
+            <span className="text-slate-300">•</span>
+            <span className="text-slate-500 font-medium">{stats?.inactiveShops ?? 0} inactive</span>
           </div>
         </Card>
 
-        {/* Registered Users */}
+        {/* Subscriptions & Accounts */}
         <Card className="p-6 border-slate-200/80 shadow-soft hover:shadow-card transition-shadow">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-              Platform Accounts
-            </span>
-            <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
-              <Users className="w-5 h-5" />
-            </div>
-          </div>
-          <p className="text-3xl font-bold font-serif text-slate-900 mt-3">
-            {stats?.totalUsers ?? 0}
-          </p>
-          <span className="text-xs text-purple-700 font-medium inline-flex items-center mt-2">
-            Multi-role users registered
-          </span>
-        </Card>
-
-        {/* Active Storefronts */}
-        <Card className="p-6 border-slate-200/80 shadow-soft hover:shadow-card transition-shadow">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-              Active Storefronts
+              Active Subscriptions
             </span>
             <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
               <ShieldCheck className="w-5 h-5" />
             </div>
           </div>
           <p className="text-3xl font-bold font-serif text-slate-900 mt-3">
-            {stats?.activeShops ?? 0}
+            {stats?.activeSubscriptions ?? 0}
           </p>
-          <span className="text-xs text-emerald-700 font-medium inline-flex items-center mt-2">
-            Taking orders right now
-          </span>
+          <div className="flex items-center gap-2 mt-2 text-xs">
+            <span className="text-rose-600 font-medium">
+              {stats?.expiredSubscriptions ?? 0} expired
+            </span>
+            <span className="text-slate-300">•</span>
+            <span className="text-slate-500 font-medium">
+              {stats?.totalUsers ?? 0} users total
+            </span>
+          </div>
+        </Card>
+
+        {/* Today's Platform Activity */}
+        <Card className="p-6 border-slate-200/80 shadow-soft hover:shadow-card transition-shadow">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+              Today&apos;s Activity
+            </span>
+            <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+              <Users className="w-5 h-5" />
+            </div>
+          </div>
+          <p className="text-3xl font-bold font-serif text-slate-900 mt-3">
+            {stats?.todayRegistrations ?? 0}
+          </p>
+          <div className="flex items-center gap-2 mt-2 text-xs">
+            <span className="text-purple-700 font-medium">New registrations</span>
+            <span className="text-slate-300">•</span>
+            <span className="text-emerald-700 font-medium">{stats?.todayPayments ?? 0} payments</span>
+          </div>
         </Card>
 
         {/* Platform Revenue / GMV */}
         <Card className="p-6 border-slate-200/80 shadow-soft hover:shadow-card transition-shadow">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-              Platform Volume (GMV)
+              Monthly Realized
             </span>
             <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
               <TrendingUp className="w-5 h-5" />
             </div>
           </div>
           <p className="text-3xl font-bold font-serif text-slate-900 mt-3">
-            {formatCurrency(stats?.totalRevenue)}
+            {formatCurrency(stats?.monthlyRevenue)}
           </p>
-          <span className="text-xs text-amber-700 font-medium inline-flex items-center mt-2">
-            Cumulative order throughput
-          </span>
+          <div className="flex items-center gap-2 mt-2 text-xs">
+            <span className="text-amber-700 font-medium">
+              {formatCurrency(stats?.totalRevenue)} cumulative GMV
+            </span>
+          </div>
         </Card>
       </div>
 

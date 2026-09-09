@@ -18,6 +18,10 @@ export const deliverySlotsApi = {
     return apiClient.put<DeliverySlot>(`/api/owner/delivery-slots/${id}`, slot);
   },
 
+  toggleSlotStatus: async (id: number, isActive: boolean): Promise<DeliverySlot> => {
+    return apiClient.patch<DeliverySlot>(`/api/owner/delivery-slots/${id}/status`, { isActive });
+  },
+
   deleteSlot: async (id: number): Promise<void> => {
     return apiClient.delete<void>(`/api/owner/delivery-slots/${id}`);
   },

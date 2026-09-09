@@ -31,4 +31,10 @@ public class VerificationController {
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         return ResponseEntity.ok(verificationService.getMyDocuments(userDetails.getId()));
     }
+
+    @GetMapping("/status")
+    public ResponseEntity<java.util.Map<String, Object>> getVerificationStatus(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(verificationService.getVerificationStatus(userDetails.getId()));
+    }
 }

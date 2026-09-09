@@ -161,12 +161,4 @@ public class AuthService {
                 .subscriptionStatus(subscriptionStatus)
                 .build();
     }
-
-    @Transactional
-    public String makeAdmin(String email) {
-        User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
-        user.setRole(UserRole.ADMIN);
-        userRepository.save(user);
-        return "User " + email + " is now an ADMIN!";
-    }
 }

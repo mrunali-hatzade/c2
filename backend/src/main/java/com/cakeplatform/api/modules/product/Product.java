@@ -24,6 +24,11 @@ public class Product {
     @JoinColumn(name = "shop_id", nullable = false)
     private Shop shop;
 
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id")
+    private ProductCategory category;
+
     @Column(nullable = false)
     private String name;
 
@@ -54,4 +59,14 @@ public class Product {
 
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     private java.util.List<ProductAddon> addons = new java.util.ArrayList<>();
+
+    @com.fasterxml.jackson.annotation.JsonProperty("categoryId")
+    public Long getCategoryId() {
+        return category != null ? category.getId() : null;
+    }
+
+    @com.fasterxml.jackson.annotation.JsonProperty("categoryName")
+    public String getCategoryName() {
+        return category != null ? category.getName() : null;
+    }
 }

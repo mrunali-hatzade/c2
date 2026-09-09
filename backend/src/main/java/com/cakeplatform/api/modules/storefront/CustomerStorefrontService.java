@@ -12,12 +12,16 @@ import com.cakeplatform.api.modules.storefront.dto.GuestOrderRequest;
 import com.cakeplatform.api.modules.storefront.dto.StorefrontShopResponse;
 import com.cakeplatform.api.modules.storefront.dto.StorefrontOrderItem;
 import com.cakeplatform.api.modules.storefront.dto.StorefrontDeliverySlotResponse;
+import com.cakeplatform.api.modules.storefront.dto.ValidateCouponRequest;
+import com.cakeplatform.api.modules.storefront.dto.ValidateCouponResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -31,6 +35,7 @@ public class CustomerStorefrontService {
     private final com.cakeplatform.api.modules.shop.CouponRepository couponRepository;
     private final com.cakeplatform.api.modules.notification.NotificationService notificationService;
     private final com.cakeplatform.api.modules.interaction.CustomCakeRequestRepository customCakeRequestRepository;
+    private final com.cakeplatform.api.modules.product.ProductCategoryRepository categoryRepository;
 
     private Shop getActiveShop(Long shopId) {
         Shop shop = shopRepository.findById(shopId)
@@ -68,6 +73,11 @@ public class CustomerStorefrontService {
 
     public List<StorefrontShopResponse> searchShopsByLocation(String location) {
         return searchShops(null, null, null, null, null, null, location);
+    }
+
+    public List<com.cakeplatform.api.modules.product.dto.CategoryResponse> getShopCategories(Long shopId) {
+        getActiveShop(shopId);
+        return categoryRepository.findNonEmptyByShopId(shopId);
     }
 
     private StorefrontShopResponse mapToStorefrontShopResponse(Shop shop) {
@@ -222,47 +232,65 @@ public class CustomerStorefrontService {
         
         BigDecimal discount = BigDecimal.ZERO;
         
-        // Coupon Validation
+        // Coupon Validation & Atomic Concurrency Update
         if (request.getCouponCode() != null && !request.getCouponCode().isBlank()) {
-            com.cakeplatform.api.modules.shop.Coupon coupon = couponRepository.findByShopIdAndCode(shopId, request.getCouponCode())
+            String cleanCode = request.getCouponCode().trim().toUpperCase();
+            com.cakeplatform.api.modules.shop.Coupon coupon = couponRepository.findByShopIdAndCodeIgnoreCase(shopId, cleanCode)
                 .orElseThrow(() -> new RuntimeException("Invalid coupon code"));
                 
-            if (!coupon.getIsActive()) throw new RuntimeException("Coupon is inactive");
+            if (!Boolean.TRUE.equals(coupon.getIsActive())) {
+                throw new RuntimeException("Coupon is inactive");
+            }
             
-            if (coupon.getExpiryDate() != null && coupon.getExpiryDate().isBefore(java.time.LocalDateTime.now())) {
+            java.time.LocalDateTime now = java.time.LocalDateTime.now();
+            if (coupon.getStartDate() != null && coupon.getStartDate().isAfter(now)) {
+                throw new RuntimeException("Coupon is not active yet");
+            }
+            
+            if (coupon.getExpiryDate() != null && coupon.getExpiryDate().isBefore(now)) {
                 throw new RuntimeException("Coupon has expired");
             }
             
-            if (coupon.getUsageLimit() != null && coupon.getUsedCount() >= coupon.getUsageLimit()) {
-                throw new RuntimeException("Coupon usage limit reached");
-            }
-            
             if (coupon.getMinOrderValue() != null && subtotal.compareTo(coupon.getMinOrderValue()) < 0) {
-                throw new RuntimeException("Minimum order value for coupon not met");
+                throw new RuntimeException("Minimum order value of ₹" + coupon.getMinOrderValue() + " required for this coupon");
             }
             
-            // Calculate Discount
+            // Server-side Authoritative Discount Calculation
             if (coupon.getDiscountType() == com.cakeplatform.api.modules.shop.Coupon.DiscountType.FLAT) {
                 discount = coupon.getDiscountValue();
             } else if (coupon.getDiscountType() == com.cakeplatform.api.modules.shop.Coupon.DiscountType.PERCENTAGE) {
-                discount = subtotal.multiply(coupon.getDiscountValue()).divide(BigDecimal.valueOf(100));
+                discount = subtotal.multiply(coupon.getDiscountValue()).divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
                 if (coupon.getMaxDiscountCap() != null && discount.compareTo(coupon.getMaxDiscountCap()) > 0) {
                     discount = coupon.getMaxDiscountCap();
                 }
             }
             
-            // Increment usage
-            coupon.setUsedCount(coupon.getUsedCount() + 1);
-            couponRepository.save(coupon);
+            if (discount.compareTo(subtotal) > 0) {
+                discount = subtotal;
+            }
+            if (discount.compareTo(BigDecimal.ZERO) < 0) {
+                discount = BigDecimal.ZERO;
+            }
+
+            // Atomic Concurrency Protection: Increment used_count only if within usage_limit
+            int updated = couponRepository.incrementUsedCountIfWithinLimit(coupon.getId());
+            if (updated == 0) {
+                throw new RuntimeException("Coupon usage limit reached");
+            }
             
             order.setCouponCode(coupon.getCode());
         }
         
         // Ensure discount doesn't exceed subtotal
         if (discount.compareTo(subtotal) > 0) discount = subtotal;
+        if (discount.compareTo(BigDecimal.ZERO) < 0) discount = BigDecimal.ZERO;
         
         order.setDiscountAmount(discount);
-        order.setTotalAmount(subtotal.subtract(discount).add(order.getDeliveryCharge()));
+        BigDecimal calculatedTotal = subtotal.subtract(discount).add(order.getDeliveryCharge());
+        if (calculatedTotal.compareTo(BigDecimal.ZERO) < 0) {
+            calculatedTotal = BigDecimal.ZERO;
+        }
+        order.setTotalAmount(calculatedTotal);
 
         Order savedOrder = orderRepository.save(order);
 
@@ -277,11 +305,19 @@ public class CustomerStorefrontService {
         );
         
         // Send SMS to Customer
-        org.springframework.web.context.support.WebApplicationContextUtils
-            .getRequiredWebApplicationContext(
-                ((org.springframework.web.context.request.ServletRequestAttributes) org.springframework.web.context.request.RequestContextHolder.getRequestAttributes()).getRequest().getServletContext()
-            ).getBean(com.cakeplatform.api.modules.notification.SmsService.class)
-            .sendSms(savedOrder.getCustomerPhone(), "Hi " + savedOrder.getCustomerName() + ", your Cake Platform order " + savedOrder.getOrderNumber() + " has been received! 🎂");
+        try {
+            org.springframework.web.context.request.RequestAttributes attrs = org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
+            if (attrs instanceof org.springframework.web.context.request.ServletRequestAttributes servletAttrs) {
+                com.cakeplatform.api.modules.notification.SmsService smsService = org.springframework.web.context.support.WebApplicationContextUtils
+                    .getRequiredWebApplicationContext(servletAttrs.getRequest().getServletContext())
+                    .getBean(com.cakeplatform.api.modules.notification.SmsService.class);
+                if (smsService != null) {
+                    smsService.sendSms(savedOrder.getCustomerPhone(), "Hi " + savedOrder.getCustomerName() + ", your Cake Platform order " + savedOrder.getOrderNumber() + " has been received! 🎂");
+                }
+            }
+        } catch (Exception ignored) {
+            // Non-blocking SMS dispatch
+        }
 
         return savedOrder;
     }
@@ -362,5 +398,113 @@ public class CustomerStorefrontService {
         }
 
         return saved;
+    }
+
+    public ValidateCouponResponse validateCouponForStorefront(Long shopId, ValidateCouponRequest request) {
+        if (request == null || request.getCode() == null || request.getCode().isBlank()) {
+            return ValidateCouponResponse.builder()
+                    .valid(false)
+                    .message("Coupon code is required")
+                    .discountAmount(BigDecimal.ZERO)
+                    .build();
+        }
+
+        getActiveShop(shopId);
+
+        BigDecimal subtotal = request.getSubtotal() != null ? request.getSubtotal() : BigDecimal.ZERO;
+        String cleanCode = request.getCode().trim().toUpperCase();
+
+        var couponOpt = couponRepository.findByShopIdAndCodeIgnoreCase(shopId, cleanCode);
+        if (couponOpt.isEmpty()) {
+            return ValidateCouponResponse.builder()
+                    .valid(false)
+                    .code(cleanCode)
+                    .discountAmount(BigDecimal.ZERO)
+                    .message("Invalid coupon code")
+                    .build();
+        }
+
+        com.cakeplatform.api.modules.shop.Coupon coupon = couponOpt.get();
+
+        if (!Boolean.TRUE.equals(coupon.getIsActive())) {
+            return ValidateCouponResponse.builder()
+                    .valid(false)
+                    .code(coupon.getCode())
+                    .discountAmount(BigDecimal.ZERO)
+                    .message("Coupon is inactive")
+                    .build();
+        }
+
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        if (coupon.getStartDate() != null && coupon.getStartDate().isAfter(now)) {
+            return ValidateCouponResponse.builder()
+                    .valid(false)
+                    .code(coupon.getCode())
+                    .discountAmount(BigDecimal.ZERO)
+                    .message("Coupon is not active yet")
+                    .build();
+        }
+
+        if (coupon.getExpiryDate() != null && coupon.getExpiryDate().isBefore(now)) {
+            return ValidateCouponResponse.builder()
+                    .valid(false)
+                    .code(coupon.getCode())
+                    .discountAmount(BigDecimal.ZERO)
+                    .message("Coupon has expired")
+                    .build();
+        }
+
+        if (coupon.getUsageLimit() != null && coupon.getUsedCount() >= coupon.getUsageLimit()) {
+            return ValidateCouponResponse.builder()
+                    .valid(false)
+                    .code(coupon.getCode())
+                    .discountAmount(BigDecimal.ZERO)
+                    .message("Coupon usage limit reached")
+                    .build();
+        }
+
+        if (coupon.getMinOrderValue() != null && subtotal.compareTo(coupon.getMinOrderValue()) < 0) {
+            return ValidateCouponResponse.builder()
+                    .valid(false)
+                    .code(coupon.getCode())
+                    .discountAmount(BigDecimal.ZERO)
+                    .minOrderValue(coupon.getMinOrderValue())
+                    .message("Minimum order value of ₹" + coupon.getMinOrderValue() + " required")
+                    .build();
+        }
+
+        BigDecimal discount = BigDecimal.ZERO;
+        if (coupon.getDiscountType() == com.cakeplatform.api.modules.shop.Coupon.DiscountType.FLAT) {
+            discount = coupon.getDiscountValue();
+        } else if (coupon.getDiscountType() == com.cakeplatform.api.modules.shop.Coupon.DiscountType.PERCENTAGE) {
+            discount = subtotal.multiply(coupon.getDiscountValue()).divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
+            if (coupon.getMaxDiscountCap() != null && discount.compareTo(coupon.getMaxDiscountCap()) > 0) {
+                discount = coupon.getMaxDiscountCap();
+            }
+        }
+
+        if (discount.compareTo(subtotal) > 0) {
+            discount = subtotal;
+        }
+        if (discount.compareTo(BigDecimal.ZERO) < 0) {
+            discount = BigDecimal.ZERO;
+        }
+
+        BigDecimal newSubtotal = subtotal.subtract(discount);
+        if (newSubtotal.compareTo(BigDecimal.ZERO) < 0) {
+            newSubtotal = BigDecimal.ZERO;
+        }
+
+        return ValidateCouponResponse.builder()
+                .valid(true)
+                .code(coupon.getCode())
+                .discountType(coupon.getDiscountType().name())
+                .discountValue(coupon.getDiscountValue())
+                .discountAmount(discount)
+                .minOrderValue(coupon.getMinOrderValue())
+                .maxDiscountCap(coupon.getMaxDiscountCap())
+                .newSubtotal(newSubtotal)
+                .message("Coupon applied successfully")
+                .build();
     }
 }

@@ -21,6 +21,7 @@ import java.util.List;
 public class SubscriptionScheduler {
 
     private final SubscriptionRepository subscriptionRepository;
+    private final SubscriptionService subscriptionService;
     private final NotificationService notificationService;
 
     @Scheduled(cron = "0 0 0 * * ?")
@@ -41,7 +42,9 @@ public class SubscriptionScheduler {
             if (daysUntilExpiry == 7 || daysUntilExpiry == 5 || daysUntilExpiry == 3 || daysUntilExpiry == 1) {
                 sendExpiringNotification(sub, daysUntilExpiry);
             } else if (daysUntilExpiry <= 0) {
-                handleExpiredSubscription(sub);
+                log.info("Subscription ID {} for Shop ID {} has expired (daysUntilExpiry: {}). Triggering expiration workflow...",
+                        sub.getId(), sub.getShop().getId(), daysUntilExpiry);
+                subscriptionService.expireSubscription(sub.getId());
             }
         }
     }
@@ -61,25 +64,5 @@ public class SubscriptionScheduler {
                 true
         );
         log.info("Sent expiring notification to Shop ID {}", shop.getId());
-    }
-
-    private void handleExpiredSubscription(Subscription sub) {
-        sub.setStatus(SubscriptionStatus.EXPIRED);
-        subscriptionRepository.save(sub);
-
-        Shop shop = sub.getShop();
-        User owner = shop.getOwner();
-        String message = String.format("Your subscription for %s has expired. Your shop is now hidden from customers.", 
-                                        shop.getBusinessName());
-
-        notificationService.createNotification(
-                owner,
-                NotificationType.SUBSCRIPTION_EXPIRED,
-                "Subscription Expired",
-                message,
-                sub.getId().toString(),
-                true
-        );
-        log.info("Subscription expired for Shop ID {}", shop.getId());
     }
 }

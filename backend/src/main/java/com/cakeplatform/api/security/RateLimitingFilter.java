@@ -7,6 +7,7 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -17,37 +18,86 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class RateLimitingFilter implements Filter {
 
-    private final Map<String, Bucket> cache = new ConcurrentHashMap<>();
+    // Tier 1: Auth endpoints (10 requests per minute per IP)
+    private final Map<String, Bucket> authBuckets = new ConcurrentHashMap<>();
 
-    private Bucket createNewBucket() {
-        // 20 requests per minute per IP
-        Refill refill = Refill.greedy(20, Duration.ofMinutes(1));
-        Bandwidth limit = Bandwidth.classic(20, refill);
+    // Tier 2: Abuse-sensitive public actions (20 requests per minute per IP)
+    private final Map<String, Bucket> sensitiveBuckets = new ConcurrentHashMap<>();
+
+    // Tier 3: General storefront browsing (120 requests per minute per IP)
+    private final Map<String, Bucket> storefrontBuckets = new ConcurrentHashMap<>();
+
+    private Bucket createBucket(int capacity, Duration refillDuration) {
+        Refill refill = Refill.greedy(capacity, refillDuration);
+        Bandwidth limit = Bandwidth.classic(capacity, refill);
         return Bucket.builder().addLimit(limit).build();
+    }
+
+    private String getClientIp(HttpServletRequest request) {
+        String xff = request.getHeader("X-Forwarded-For");
+        if (xff != null && !xff.isBlank()) {
+            return xff.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
     }
 
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
             throws IOException, ServletException {
-        
+
         HttpServletRequest httpRequest = (HttpServletRequest) request;
         String uri = httpRequest.getRequestURI();
-        
-        // Only apply rate limiting to public endpoints that are vulnerable to spam
-        if (uri.startsWith("/api/storefront/") || uri.startsWith("/api/auth/")) {
-            String ip = httpRequest.getRemoteAddr();
-            Bucket bucket = cache.computeIfAbsent(ip, k -> createNewBucket());
-            
-            if (bucket.tryConsume(1)) {
-                chain.doFilter(request, response);
-            } else {
-                HttpServletResponse httpResponse = (HttpServletResponse) response;
-                httpResponse.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
-                httpResponse.getWriter().write("Too many requests - Rate limit exceeded");
+
+        // 1. Explicitly exempt server-to-server webhooks, health checks, and static uploads
+        if (uri.startsWith("/api/webhooks/") || uri.equals("/api/health") || uri.startsWith("/uploads/")) {
+            chain.doFilter(request, response);
+            return;
+        }
+
+        // 2. Auth Endpoints: Strict 10 req/min
+        if (uri.startsWith("/api/auth/")) {
+            String ip = getClientIp(httpRequest);
+            Bucket bucket = authBuckets.computeIfAbsent(ip, k -> createBucket(10, Duration.ofMinutes(1)));
+            if (!bucket.tryConsume(1)) {
+                sendRateLimitResponse((HttpServletResponse) response);
                 return;
             }
-        } else {
-            chain.doFilter(request, response);
         }
+        // 3. Sensitive Public Endpoints: 20 req/min (coupons, payment verification, order checkout, enquiries)
+        else if (isSensitiveEndpoint(uri)) {
+            String ip = getClientIp(httpRequest);
+            Bucket bucket = sensitiveBuckets.computeIfAbsent(ip, k -> createBucket(20, Duration.ofMinutes(1)));
+            if (!bucket.tryConsume(1)) {
+                sendRateLimitResponse((HttpServletResponse) response);
+                return;
+            }
+        }
+        // 4. Storefront General Browsing: Generous 120 req/min
+        else if (uri.startsWith("/api/storefront/")) {
+            String ip = getClientIp(httpRequest);
+            Bucket bucket = storefrontBuckets.computeIfAbsent(ip, k -> createBucket(120, Duration.ofMinutes(1)));
+            if (!bucket.tryConsume(1)) {
+                sendRateLimitResponse((HttpServletResponse) response);
+                return;
+            }
+        }
+
+        chain.doFilter(request, response);
+    }
+
+    private boolean isSensitiveEndpoint(String uri) {
+        return uri.contains("/verify-payment")
+                || uri.contains("/create-payment-order")
+                || uri.contains("/coupons/validate")
+                || uri.endsWith("/enquiry")
+                || uri.startsWith("/api/owner/media/upload");
+    }
+
+    private void sendRateLimitResponse(HttpServletResponse response) throws IOException {
+        response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
+        response.setHeader("Retry-After", "60");
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setCharacterEncoding("UTF-8");
+        response.getWriter().write("{\"error\":\"Too Many Requests\",\"message\":\"Rate limit exceeded. Please try again later.\",\"retryAfter\":60}");
     }
 }

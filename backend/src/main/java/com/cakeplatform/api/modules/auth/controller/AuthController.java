@@ -35,9 +35,4 @@ public class AuthController {
     ) {
         return ResponseEntity.ok(authService.login(request));
     }
-
-    @PostMapping("/make-admin")
-    public ResponseEntity<String> makeAdmin(@RequestBody java.util.Map<String, String> payload) {
-        return ResponseEntity.ok(authService.makeAdmin(payload.get("email")));
-    }
 }

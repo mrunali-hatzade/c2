@@ -2,9 +2,24 @@ export interface DashboardStats {
   totalShops: number;
   activeShops: number;
   suspendedShops: number;
+  inactiveShops: number;
   pendingShops: number;
   totalUsers: number;
+  todayRegistrations: number;
+  activeSubscriptions: number;
+  expiredSubscriptions: number;
+  todayPayments: number;
+  monthlyRevenue: number;
   totalRevenue: number;
+}
+
+export interface BusinessDocumentItem {
+  id: number;
+  documentType: string;
+  fileUrl: string;
+  status: 'PROCESSING' | 'VERIFIED' | 'ACTION_REQUIRED' | 'REJECTED' | string;
+  createdAt: string;
+  updatedAt?: string;
 }
 
 export interface AdminShopSummary {
@@ -29,6 +44,7 @@ export interface AdminShopDetails {
     pincode?: string;
     fssaiRegistration?: string;
     status: 'ACTIVE' | 'PENDING' | 'SUSPENDED' | 'REJECTED' | string;
+    verificationStatus?: 'PROCESSING' | 'VERIFIED' | 'ACTION_REQUIRED' | 'REJECTED' | string;
     isPureVeg?: boolean;
     createdAt: string;
     updatedAt: string;
@@ -52,8 +68,10 @@ export interface AdminShopDetails {
     id: number;
     action: string;
     details?: string;
+    metadata?: string;
     createdAt: string;
   }[];
+  businessDocuments?: BusinessDocumentItem[];
   totalProducts: number;
   totalOrders: number;
 }

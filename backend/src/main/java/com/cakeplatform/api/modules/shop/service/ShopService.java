@@ -27,6 +27,10 @@ public class ShopService {
     public ShopResponse updateMyShopProfile(Long ownerId, UpdateShopRequest request) {
         Shop shop = getShopByOwnerId(ownerId);
 
+        if (shop.getStatus() == com.cakeplatform.api.modules.shop.ShopStatus.SUSPENDED) {
+            throw new com.cakeplatform.api.exception.SubscriptionExpiredException("Shop is suspended by administration. Profile updates are disabled.");
+        }
+
         if (request.getBusinessName() != null) shop.setBusinessName(request.getBusinessName());
         if (request.getDescription() != null) shop.setDescription(request.getDescription());
         if (request.getPhone() != null) shop.setPhone(request.getPhone());
@@ -51,7 +55,7 @@ public class ShopService {
     }
 
     private Shop getShopByOwnerId(Long ownerId) {
-        return shopAccessValidator.getValidShopForOwner(ownerId);
+        return shopAccessValidator.getShopByOwnerId(ownerId);
     }
 
     private ShopResponse mapToResponse(Shop shop) {

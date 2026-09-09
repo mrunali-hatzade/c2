@@ -1,322 +1,234 @@
 import { apiClient } from './client';
 import {
   DashboardAnalytics,
-  Coupon,
-  CreateCouponRequest,
-  OwnerCustomer,
-  CustomCakeEnquiry,
-  EnquiryStatus,
-  BakeryReview,
+  CouponRecord,
+  CreateCouponPayload,
+  CustomerProfile,
+  CustomCakeRequest,
+  GeneralEnquiry,
+  FeedbackRecord,
   ShopSettings,
-  OwnerSubscription,
+  ShopPayoutDetails,
+  SubscriptionRecord,
+  PaymentMockResult,
+  OwnerDashboardStats,
+  OwnerPaymentRecord,
 } from '@/types/owner';
 
-// Offline fallback mock data
-const MOCK_ANALYTICS: DashboardAnalytics = {
-  totalRevenue: 48500,
-  totalOrders: 38,
-  salesByDay: {
-    Monday: 4200,
-    Tuesday: 5800,
-    Wednesday: 3900,
-    Thursday: 6700,
-    Friday: 9400,
-    Saturday: 11200,
-    Sunday: 7300,
-  },
-  topSellingProducts: {
-    'Dutch Truffle Cake': 14,
-    'Fresh Strawberry Gateau': 9,
-    'Red Velvet Cream Cheese': 8,
-    'Belgian Chocolate Bento': 7,
-  },
-  conversionRate: 4.8,
-  averageOrderValue: 1276,
-  activeProductsCount: 16,
-};
-
-const MOCK_COUPONS: Coupon[] = [
-  {
-    id: '1',
-    code: 'SWEET10',
-    discountPercent: 10,
-    minOrderAmount: 499,
-    validUntil: '2026-12-31',
-    isActive: true,
-    usageCount: 24,
-  },
-  {
-    id: '2',
-    code: 'FESTIVE50',
-    flatDiscount: 50,
-    minOrderAmount: 799,
-    validUntil: '2026-11-15',
-    isActive: true,
-    usageCount: 12,
-  },
-  {
-    id: '3',
-    code: 'WELCOMEBENTO',
-    discountPercent: 15,
-    minOrderAmount: 350,
-    validUntil: '2026-08-01',
-    isActive: false,
-    usageCount: 45,
-  },
-];
-
-const MOCK_CUSTOMERS: OwnerCustomer[] = [
-  {
-    id: '1',
-    name: 'Pooja Deshmukh',
-    email: 'pooja.d@gmail.com',
-    phone: '+91 98231 44521',
-    totalOrders: 5,
-    totalSpend: 5450,
-    lastOrderDate: '2026-09-02',
-    address: 'B-402, Pradhikaran, Akurdi, Pune',
-  },
-  {
-    id: '2',
-    name: 'Amitabh Sharma',
-    email: 'amitabh.s@yahoo.com',
-    phone: '+91 98110 88234',
-    totalOrders: 3,
-    totalSpend: 3100,
-    lastOrderDate: '2026-08-28',
-    address: 'A-12, Green Acres, Baner, Pune',
-  },
-  {
-    id: '3',
-    name: 'Sneha Kulkarni',
-    email: 'sneha.k@outlook.com',
-    phone: '+91 97654 32109',
-    totalOrders: 2,
-    totalSpend: 1950,
-    lastOrderDate: '2026-08-19',
-    address: 'Flat 101, Datta Nagar, Ravet, Pune',
-  },
-];
-
-const MOCK_ENQUIRIES: CustomCakeEnquiry[] = [
-  {
-    id: '1',
-    customerName: 'Rohit Kadam',
-    customerPhone: '+91 98901 12345',
-    customerEmail: 'rohit.kadam@gmail.com',
-    occasion: '1st Birthday Celebration',
-    flavor: 'Belgian Chocolate + Berry Coulis',
-    weightKg: 2.5,
-    budget: 3500,
-    eventDate: '2026-09-12',
-    referenceImageUrl: 'https://images.unsplash.com/photo-1535141192574-5d4897c13136?auto=format&fit=crop&w=600&q=80',
-    status: 'NEW',
-    notes: 'Need blue hot air balloon theme with cute golden edible stars. Eggless preferred.',
-    createdAt: '2026-09-04T10:15:00Z',
-  },
-  {
-    id: '2',
-    customerName: 'Ananya Sen',
-    customerPhone: '+91 98765 43210',
-    customerEmail: 'ananya.sen@gmail.com',
-    occasion: '25th Wedding Silver Anniversary',
-    flavor: 'Red Velvet with Cream Cheese',
-    weightKg: 3,
-    budget: 4500,
-    eventDate: '2026-09-18',
-    referenceImageUrl: 'https://images.unsplash.com/photo-1562440499-64c9a111f713?auto=format&fit=crop&w=600&q=80',
-    status: 'QUOTED',
-    quotedPrice: 4200,
-    notes: 'Two-tier cake with silver edible foil and fresh white carnations.',
-    createdAt: '2026-09-03T14:30:00Z',
-  },
-];
-
-const MOCK_REVIEWS: BakeryReview[] = [
-  {
-    id: '1',
-    customerName: 'Tanvi Joshi',
-    rating: 5,
-    comment: 'The chocolate truffle cake was absolute heaven! Delivered right at the 6 PM slot in pristine condition. Highly recommended.',
-    createdAt: '2026-09-01',
-    orderNumber: 'ORD-98214',
-    cakeName: 'Dutch Truffle Cake',
-    reply: 'Thank you so much Tanvi! We loved baking this for your celebration.',
-    replyDate: '2026-09-02',
-  },
-  {
-    id: '2',
-    customerName: 'Kunal Patil',
-    rating: 4,
-    comment: 'Very tasty cake, beautiful piping and finish. Would appreciate slightly less sugar, but overall very happy with our order!',
-    createdAt: '2026-08-27',
-    orderNumber: 'ORD-97812',
-    cakeName: 'Fresh Fruit Gateau',
-  },
-];
-
-const MOCK_SETTINGS: ShopSettings = {
-  businessName: 'Artisan Oven Boutique Bakery',
-  businessType: 'CUSTOM_CAKE_STUDIO',
-  description: 'Handcrafted customized designer cakes, gourmet desserts and celebration bakes made fresh with love in Akurdi, Pune.',
-  phone: '+91 98231 00000',
-  email: 'hello@artisanoven.in',
-  addressLine1: 'Shop No. 4, Pride Horizon',
-  addressLine2: 'Near Akurdi Railway Station',
-  area: 'Akurdi',
-  city: 'Pimpri-Chinchwad',
-  district: 'Pune',
-  state: 'Maharashtra',
-  pincode: '411035',
-  fssaiRegistration: 'FSSAI-21523000000123',
-  isPureVeg: false,
-  openingTime: '09:00',
-  closingTime: '22:00',
-  coverImageUrl: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=1200&q=80',
-  logoUrl: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=200&q=80',
-  instagramUrl: 'https://instagram.com/artisanovenbakes',
-  whatsappNumber: '+919823100000',
-};
-
-const MOCK_SUBSCRIPTION: OwnerSubscription = {
-  planId: 'pro-baker',
-  planName: 'Pro Baker Studio Suite',
-  price: 350,
-  billingCycle: 'monthly',
-  status: 'ACTIVE',
-  renewalDate: '2026-10-04',
-  ordersProcessedThisMonth: 38,
-  ordersLimit: 1000,
-  features: [
-    'Branded Custom Storefront',
-    'Unlimited Cake & Product Catalog',
-    'Kitchen Order Management & Kanban',
-    '0% Commission on Direct Customer Orders',
-    'WhatsApp Order Notifications',
-    'Custom Delivery Slots Calendar',
-    'Customer Review & CRM Suite',
-  ],
-};
-
 export const ownerApi = {
+  // Stats
+  getDashboardStats: async (): Promise<OwnerDashboardStats> => {
+    return apiClient.get<OwnerDashboardStats>('/api/shops/my-shop/stats');
+  },
+
   // Analytics
   getAnalytics: async (): Promise<DashboardAnalytics> => {
-    try {
-      return await apiClient.get<DashboardAnalytics>('/api/owner/analytics');
-    } catch {
-      return MOCK_ANALYTICS;
-    }
+    return apiClient.get<DashboardAnalytics>('/api/owner/analytics/dashboard');
   },
 
   // Coupons
-  getCoupons: async (): Promise<Coupon[]> => {
-    try {
-      return await apiClient.get<Coupon[]>('/api/owner/coupons');
-    } catch {
-      return MOCK_COUPONS;
-    }
+  getCoupons: async (): Promise<CouponRecord[]> => {
+    return apiClient.get<CouponRecord[]>('/api/owner/coupons');
   },
 
-  createCoupon: async (data: CreateCouponRequest): Promise<Coupon> => {
-    try {
-      return await apiClient.post<Coupon>('/api/owner/coupons', data);
-    } catch {
-      const newCoupon: Coupon = {
-        id: String(Date.now()),
-        code: data.code.toUpperCase(),
-        discountPercent: data.discountPercent,
-        flatDiscount: data.flatDiscount,
-        minOrderAmount: data.minOrderAmount,
-        validUntil: data.validUntil,
-        isActive: true,
-        usageCount: 0,
-      };
-      return newCoupon;
-    }
+  getOwnerCoupons: async (): Promise<CouponRecord[]> => {
+    return apiClient.get<CouponRecord[]>('/api/owner/coupons');
+  },
+
+  createCoupon: async (data: CreateCouponPayload): Promise<CouponRecord> => {
+    return apiClient.post<CouponRecord>('/api/owner/coupons', data);
+  },
+
+  createOwnerCoupon: async (data: CreateCouponPayload): Promise<CouponRecord> => {
+    return apiClient.post<CouponRecord>('/api/owner/coupons', data);
   },
 
   toggleCoupon: async (id: string | number): Promise<void> => {
-    try {
-      await apiClient.patch(`/api/owner/coupons/${id}/toggle`);
-    } catch {
-      // Mock toggle
-    }
+    await apiClient.patch(`/api/owner/coupons/${id}/toggle`);
   },
 
   deleteCoupon: async (id: string | number): Promise<void> => {
-    try {
-      await apiClient.delete(`/api/owner/coupons/${id}`);
-    } catch {
-      // Mock delete
-    }
+    await apiClient.delete(`/api/owner/coupons/${id}`);
   },
 
   // Customers
-  getCustomers: async (): Promise<OwnerCustomer[]> => {
-    try {
-      return await apiClient.get<OwnerCustomer[]>('/api/owner/customers');
-    } catch {
-      return MOCK_CUSTOMERS;
-    }
+  getCustomers: async (): Promise<CustomerProfile[]> => {
+    return apiClient.get<CustomerProfile[]>('/api/owner/customers');
   },
 
-  // Enquiries
-  getEnquiries: async (): Promise<CustomCakeEnquiry[]> => {
-    try {
-      return await apiClient.get<CustomCakeEnquiry[]>('/api/owner/enquiries');
-    } catch {
-      return MOCK_ENQUIRIES;
-    }
+  getOwnerCustomers: async (): Promise<CustomerProfile[]> => {
+    return apiClient.get<CustomerProfile[]>('/api/owner/customers');
   },
 
-  updateEnquiryStatus: async (id: string | number, status: EnquiryStatus, quotedPrice?: number): Promise<void> => {
-    try {
-      await apiClient.patch(`/api/owner/enquiries/${id}/status`, { status, quotedPrice });
-    } catch {
-      // Mock update
-    }
+  getCustomerProfile: async (email: string): Promise<CustomerProfile> => {
+    return apiClient.get<CustomerProfile>(`/api/owner/customers/${encodeURIComponent(email)}`);
   },
 
-  // Reviews
-  getReviews: async (): Promise<BakeryReview[]> => {
-    try {
-      return await apiClient.get<BakeryReview[]>('/api/owner/reviews');
-    } catch {
-      return MOCK_REVIEWS;
-    }
+  // Enquiries (General)
+  getEnquiries: async (): Promise<GeneralEnquiry[]> => {
+    return apiClient.get<GeneralEnquiry[]>('/api/owner/enquiries');
   },
 
-  replyToReview: async (id: string | number, reply: string): Promise<void> => {
-    try {
-      await apiClient.post(`/api/owner/reviews/${id}/reply`, { reply });
-    } catch {
-      // Mock reply
-    }
+  getOwnerEnquiries: async (): Promise<GeneralEnquiry[]> => {
+    return apiClient.get<GeneralEnquiry[]>('/api/owner/enquiries');
   },
 
-  // Shop Settings
+  replyToEnquiry: async (id: string | number, reply: string): Promise<GeneralEnquiry> => {
+    return apiClient.post<GeneralEnquiry>(`/api/owner/enquiries/${id}/reply`, { reply: reply.trim() });
+  },
+
+  replyToGeneralEnquiry: async (id: number, reply: string): Promise<GeneralEnquiry> => {
+    return apiClient.post<GeneralEnquiry>(`/api/owner/enquiries/${id}/reply`, { reply: reply.trim() });
+  },
+
+  // Custom Cakes
+  getCustomCakeRequests: async (): Promise<CustomCakeRequest[]> => {
+    return apiClient.get<CustomCakeRequest[]>('/api/owner/custom-cakes');
+  },
+
+  getOwnerCustomCakeRequests: async (): Promise<CustomCakeRequest[]> => {
+    return apiClient.get<CustomCakeRequest[]>('/api/owner/custom-cakes');
+  },
+
+  respondToCustomCakeRequest: async (
+    id: string | number,
+    status: string,
+    reply?: string
+  ): Promise<CustomCakeRequest> => {
+    const url = `/api/owner/custom-cakes/${id}/respond?status=${encodeURIComponent(status)}`;
+    const body = reply && reply.trim() ? { reply: reply.trim() } : undefined;
+    return apiClient.post<CustomCakeRequest>(url, body);
+  },
+
+  updateEnquiryStatus: async (id: string | number, status: any, quotedPrice?: number): Promise<void> => {
+    const statusStr = String(status);
+    const reply = quotedPrice ? `Quote: ?${quotedPrice}` : `Status: ${statusStr}`;
+    await apiClient.post(`/api/owner/custom-cakes/${id}/respond?status=${encodeURIComponent(statusStr)}`, { reply }).catch(() => {});
+  },
+
+  // Reviews / Feedback
+  getReviews: async (): Promise<FeedbackRecord[]> => {
+    return apiClient.get<FeedbackRecord[]>('/api/owner/feedback');
+  },
+
+  getOwnerFeedback: async (): Promise<FeedbackRecord[]> => {
+    return apiClient.get<FeedbackRecord[]>('/api/owner/feedback');
+  },
+
+  replyToReview: async (id: string | number, reply: string): Promise<FeedbackRecord> => {
+    return apiClient.post<FeedbackRecord>(`/api/owner/feedback/${id}/reply`, { reply: reply.trim() });
+  },
+
+  replyToFeedback: async (id: number, reply: string): Promise<FeedbackRecord> => {
+    return apiClient.post<FeedbackRecord>(`/api/owner/feedback/${id}/reply`, { reply: reply.trim() });
+  },
+
+  deleteReview: async (id: string | number): Promise<{ message: string }> => {
+    return apiClient.delete<{ message: string }>(`/api/owner/feedback/${id}`);
+  },
+
+  deleteFeedback: async (id: number): Promise<{ message: string }> => {
+    return apiClient.delete<{ message: string }>(`/api/owner/feedback/${id}`);
+  },
+
+  // Shop Settings / Profile
   getShopSettings: async (): Promise<ShopSettings> => {
+    return apiClient.get<ShopSettings>('/api/shops/my-shop');
+  },
+
+  getVerificationStatus: async (): Promise<{
+    shopId?: number;
+    verificationStatus: string;
+    rejectionReason?: string | null;
+    documents?: any[];
+  } | null> => {
     try {
-      return await apiClient.get<ShopSettings>('/api/shops/my-shop');
+      return await apiClient.get('/api/verification/status');
     } catch {
-      return MOCK_SETTINGS;
+      return null;
     }
   },
 
   updateShopSettings: async (data: Partial<ShopSettings>): Promise<ShopSettings> => {
+    return apiClient.put<ShopSettings>('/api/shops/my-shop', data);
+  },
+
+  // Payout Details
+  getPayoutDetails: async (): Promise<ShopPayoutDetails | null> => {
     try {
-      return await apiClient.put<ShopSettings>('/api/shops/my-shop', data);
+      return await apiClient.get<ShopPayoutDetails>('/api/shops/my-shop/payouts');
     } catch {
-      return { ...MOCK_SETTINGS, ...data };
+      return null;
     }
   },
 
+  updatePayoutDetails: async (data: ShopPayoutDetails): Promise<ShopPayoutDetails> => {
+    return apiClient.post<ShopPayoutDetails>('/api/shops/my-shop/payouts', data);
+  },
+
   // Subscription
-  getSubscription: async (): Promise<OwnerSubscription> => {
+  getSubscription: async (): Promise<SubscriptionRecord | null> => {
     try {
-      return await apiClient.get<OwnerSubscription>('/api/owner/subscriptions');
+      return await apiClient.get<SubscriptionRecord>('/api/owner/subscriptions/current');
     } catch {
-      return MOCK_SUBSCRIPTION;
+      return null;
     }
   },
+
+  getCurrentSubscription: async (): Promise<SubscriptionRecord | null> => {
+    try {
+      return await apiClient.get<SubscriptionRecord>('/api/owner/subscriptions/current');
+    } catch {
+      return null;
+    }
+  },
+
+  processMockSubscriptionPayment: async (amount: number): Promise<PaymentMockResult> => {
+    return apiClient.post<PaymentMockResult>('/api/owner/payments/mock-checkout', {
+      amount: amount.toString(),
+    });
+  },
+
+  // Stage C: Owner Payments & Invoices
+  getPayments: async (): Promise<OwnerPaymentRecord[]> => {
+    return apiClient.get<OwnerPaymentRecord[]>('/api/owner/payments');
+  },
+
+  downloadPaymentInvoice: async (paymentId: number): Promise<void> => {
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+    const token = typeof window !== 'undefined' ? localStorage.getItem('cakestore_token') : null;
+
+    const response = await fetch(`${API_BASE_URL}/api/owner/payments/${paymentId}/invoice`, {
+      method: 'GET',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to download invoice: ${response.statusText}`);
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `invoice-SUB-${paymentId}.pdf`);
+    document.body.appendChild(link);
+    link.click();
+    link.parentNode?.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  },
+
+  initiateSubscriptionPayment: async (billingCycle: 'monthly' | 'yearly'): Promise<any> => {
+    return apiClient.post('/api/owner/payments/initiate-subscription', { billingCycle });
+  },
+
+  verifySubscriptionPayment: async (payload: {
+    razorpayOrderId: string;
+    razorpayPaymentId: string;
+    razorpaySignature: string;
+    billingCycle?: string;
+  }): Promise<any> => {
+    return apiClient.post('/api/owner/payments/verify-subscription', payload);
+  },
 };
+

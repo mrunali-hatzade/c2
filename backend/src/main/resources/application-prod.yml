@@ -1,0 +1,44 @@
+# Production Configuration Profile for CakeStore API
+# Active when SPRING_PROFILES_ACTIVE=prod
+
+spring:
+  datasource:
+    url: 
+    username: 
+    password: 
+    hikari:
+      maximum-pool-size: 
+      minimum-idle: 
+      idle-timeout: 
+      max-lifetime: 
+      connection-timeout: 
+
+  jpa:
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+
+jwt:
+  secret: 
+  expiration: 
+
+app:
+  cors:
+    allowed-origins: 
+
+razorpay:
+  key-id: 
+  key-secret: 
+  webhook-secret: 
+
+file:
+  upload-dir: 
+
+logging:
+  level:
+    root: INFO
+    org.springframework.web: WARN
+    org.hibernate.SQL: WARN
+    org.hibernate.type.descriptor.sql: WARN
+    com.cakeplatform.api: INFO

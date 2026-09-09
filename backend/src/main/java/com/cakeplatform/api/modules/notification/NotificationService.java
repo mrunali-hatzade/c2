@@ -57,11 +57,17 @@ public class NotificationService {
 
     @Transactional
     public void markAsRead(Long notificationId, Long userId) {
-        notificationRepository.findById(notificationId).ifPresent(notification -> {
-            if (notification.getRecipient().getId().equals(userId)) {
-                notification.setIsRead(true);
-                notificationRepository.save(notification);
-            }
-        });
+        Notification notification = notificationRepository.findById(notificationId)
+                .orElseThrow(() -> new com.cakeplatform.api.exception.ResourceNotFoundException("Notification not found with id: " + notificationId));
+        if (!notification.getRecipient().getId().equals(userId)) {
+            throw new org.springframework.security.access.AccessDeniedException("Unauthorized to modify this notification");
+        }
+        notification.setIsRead(true);
+        notificationRepository.save(notification);
+    }
+
+    @Transactional
+    public void markAllAsRead(Long userId) {
+        notificationRepository.markAllAsReadByRecipientId(userId);
     }
 }

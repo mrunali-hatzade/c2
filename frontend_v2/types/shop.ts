@@ -19,6 +19,7 @@ export interface Shop {
   state: string;
   pincode: string;
   status: ShopStatus;
+  verificationStatus?: 'VERIFIED' | 'PROCESSING' | 'UNVERIFIED' | string;
   fssaiRegistration?: string;
   yearsInBusiness?: number;
   rating?: number;

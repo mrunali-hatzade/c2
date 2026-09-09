@@ -47,18 +47,27 @@ public class MediaUploadService {
         String fileName = UUID.randomUUID().toString() + extension;
 
         try {
-            // Check if the file's name contains invalid characters
+            // Check if the file's name or subdirectory contains invalid characters
             if (fileName.contains("..")) {
                 throw new RuntimeException("Sorry! Filename contains invalid path sequence " + fileName);
             }
-            
+            if (subDirectory != null && (subDirectory.contains("..") || subDirectory.contains("/") || subDirectory.contains("\\"))) {
+                throw new IllegalArgumentException("Invalid subdirectory path sequence: " + subDirectory);
+            }
+
             Path targetLocation = this.fileStorageLocation;
             if (subDirectory != null && !subDirectory.isEmpty()) {
-                targetLocation = this.fileStorageLocation.resolve(subDirectory);
+                targetLocation = this.fileStorageLocation.resolve(subDirectory).normalize();
+                if (!targetLocation.startsWith(this.fileStorageLocation)) {
+                    throw new SecurityException("Path traversal attempt detected in subdirectory: " + subDirectory);
+                }
                 Files.createDirectories(targetLocation);
             }
-            
-            targetLocation = targetLocation.resolve(fileName);
+
+            targetLocation = targetLocation.resolve(fileName).normalize();
+            if (!targetLocation.startsWith(this.fileStorageLocation)) {
+                throw new SecurityException("Path traversal attempt detected in file path");
+            }
             Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
 
             String uriPrefix = "/uploads/";

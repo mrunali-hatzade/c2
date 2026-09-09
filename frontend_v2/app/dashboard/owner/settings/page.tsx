@@ -1,355 +1,492 @@
 'use client';
+/* eslint-disable @next/next/no-img-element */
 
-import React, { useEffect, useState } from 'react';
-import Image from 'next/image';
-import { Settings, Save, Store, MapPin, ShieldCheck, Clock, Image as ImageIcon, Leaf } from 'lucide-react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+import Link from 'next/link';
+import {
+  Settings,
+  Save,
+  Store,
+  MapPin,
+  ShieldCheck,
+  ShieldAlert,
+  Clock,
+  Image as ImageIcon,
+  Leaf,
+  ExternalLink,
+  Upload,
+  CreditCard,
+  Building2,
+  CheckCircle2,
+  AlertCircle,
+  RefreshCw,
+  Sparkles,
+} from 'lucide-react';
 import { ownerApi } from '@/lib/api/owner';
-import { ShopSettings } from '@/types/owner';
+import { mediaApi } from '@/lib/api/media';
+import { ShopSettings, ShopPayoutDetails } from '@/types/owner';
+import { useOwner } from '@/context/OwnerContext';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
-import { Select } from '@/components/ui/Select';
 import { LoadingState } from '@/components/ui/LoadingState';
-import { useToast } from '@/components/common/Toast';
 
 export default function OwnerSettingsPage() {
-  const [settings, setSettings] = useState<ShopSettings | null>(null);
+  const { updateShop, registerRefreshHandler } = useOwner();
+  const [activeTab, setActiveTab] = useState<'PROFILE' | 'PAYOUT'>('PROFILE');
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const toast = useToast();
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Profile fields
+  const [profile, setProfile] = useState<ShopSettings | null>(null);
+  const [verificationInfo, setVerificationInfo] = useState<{
+    verificationStatus: string;
+    rejectionReason?: string | null;
+  } | null>(null);
+  const [businessName, setBusinessName] = useState('');
+  const [description, setDescription] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [addressLine1, setAddressLine1] = useState('');
+  const [addressLine2, setAddressLine2] = useState('');
+  const [city, setCity] = useState('Pune');
+  const [state, setState] = useState('Maharashtra');
+  const [pincode, setPincode] = useState('411035');
+  const [isPureVeg, setIsPureVeg] = useState(false);
+  const [openingTime, setOpeningTime] = useState('09:00 AM');
+  const [closingTime, setClosingTime] = useState('10:00 PM');
+  const [fssaiRegistration, setFssaiRegistration] = useState('');
+
+  // Payout fields
+  const [payout, setPayout] = useState<ShopPayoutDetails | null>(null);
+  const [beneficiaryName, setBeneficiaryName] = useState('');
+  const [bankAccountNumber, setBankAccountNumber] = useState('');
+  const [ifscCode, setIfscCode] = useState('');
+  const [upiId, setUpiId] = useState('');
+
+  const fetchData = useCallback(async (isManual = false) => {
+    if (isManual) setRefreshing(true);
+    else setLoading(true);
+    setErrorMsg(null);
+
+    try {
+      const [shopData, payoutData, verifData] = await Promise.all([
+        ownerApi.getShopSettings(),
+        ownerApi.getPayoutDetails(),
+        ownerApi.getVerificationStatus(),
+      ]);
+
+      if (verifData) {
+        setVerificationInfo(verifData);
+      }
+
+      if (shopData) {
+        setProfile(shopData);
+        updateShop(shopData);
+        setBusinessName(shopData.businessName || '');
+        setDescription(shopData.description || '');
+        setPhone(shopData.phone || '');
+        setEmail(shopData.email || '');
+        setAddressLine1(shopData.addressLine1 || shopData.address || '');
+        setAddressLine2(shopData.addressLine2 || '');
+        setCity(shopData.city || 'Pune');
+        setState(shopData.state || 'Maharashtra');
+        setPincode(shopData.pincode || '');
+        setIsPureVeg(!!shopData.isPureVeg);
+        setOpeningTime(shopData.openingTime || '09:00 AM');
+        setClosingTime(shopData.closingTime || '10:00 PM');
+        setFssaiRegistration(shopData.fssaiRegistration || '');
+      }
+
+      if (payoutData) {
+        setPayout(payoutData);
+        setBeneficiaryName(payoutData.beneficiaryName || '');
+        setBankAccountNumber(payoutData.bankAccountNumber || '');
+        setIfscCode(payoutData.ifscCode || '');
+        setUpiId(payoutData.upiId || '');
+      }
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'Failed to load bakery settings');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [updateShop]);
 
   useEffect(() => {
-    ownerApi.getShopSettings().then((data) => {
-      setSettings(data);
-      setLoading(false);
+    fetchData();
+  }, [fetchData]);
+
+  useEffect(() => {
+    const unregister = registerRefreshHandler(async () => {
+      await fetchData(true);
     });
-  }, []);
+    return unregister;
+  }, [registerRefreshHandler, fetchData]);
 
-  const handleSave = async (e: React.FormEvent) => {
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!settings) return;
-
     setIsSaving(true);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+
     try {
-      const updated = await ownerApi.updateShopSettings(settings);
-      setSettings(updated);
-      toast.success('Storefront profile updated successfully!');
-    } catch {
-      toast.error('Failed to save settings');
+      const updated = await ownerApi.updateShopSettings({
+        businessName,
+        description,
+        phone,
+        email,
+        addressLine1,
+        addressLine2,
+        city,
+        state,
+        pincode,
+        isPureVeg,
+        openingTime,
+        closingTime,
+        fssaiRegistration,
+      });
+      setProfile(updated);
+      updateShop(updated);
+      setSuccessMsg('Bakery profile settings saved successfully!');
+      setTimeout(() => setSuccessMsg(null), 4000);
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'Failed to save bakery profile');
     } finally {
       setIsSaving(false);
     }
   };
 
-  if (loading || !settings) return <LoadingState message="Loading storefront settings..." />;
+  const handleSavePayout = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+
+    try {
+      const updated = await ownerApi.updatePayoutDetails({
+        beneficiaryName,
+        bankAccountNumber,
+        ifscCode,
+        upiId,
+      });
+      setPayout(updated);
+      setSuccessMsg('Bank account & UPI payout coordinates saved securely!');
+      setTimeout(() => setSuccessMsg(null), 4000);
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'Failed to save payout details');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (loading) return <LoadingState message="Loading bakery settings & payout details..." />;
 
   return (
-    <form onSubmit={handleSave} className="space-y-6">
+    <div className="space-y-6 max-w-5xl">
       {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-owner-border shadow-soft">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="font-serif font-bold text-xl sm:text-2xl text-owner-heading">Storefront Settings</h2>
-            <span className="px-2.5 py-0.5 rounded-full bg-brand-blush text-brand-plum text-2xs font-bold uppercase tracking-wider">
-              Live Configuration
-            </span>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-owner-border shadow-soft">
+        <div className="space-y-1">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-brand-blush text-brand-plum text-[11px] font-semibold">
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Bakery Configuration & Financials</span>
           </div>
-          <p className="text-xs sm:text-sm text-owner-muted mt-1">
-            Customize your bakery branding, address, FSSAI verification, and opening hours visible to customer marketplace visitors.
+          <h1 className="text-2xl font-bold font-serif text-owner-heading tracking-tight">
+            Settings & Payouts
+          </h1>
+          <p className="text-xs text-owner-muted">
+            Configure your commercial bakery details, operational timings, and bank payout coordinates
           </p>
         </div>
 
-        <Button type="submit" disabled={isSaving} className="self-start sm:self-auto">
-          <Save className="w-4 h-4 mr-1.5" />
-          {isSaving ? 'Saving...' : 'Save Settings'}
-        </Button>
+        <button
+          onClick={() => fetchData(true)}
+          disabled={refreshing}
+          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-owner-canvas hover:bg-brand-cream border border-owner-border text-xs font-semibold text-owner-heading transition-all disabled:opacity-60 cursor-pointer self-start sm:self-auto"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 text-brand-plum ${refreshing ? 'animate-spin' : ''}`} />
+          <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
+        </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column: Core Identity & Address */}
-        <div className="lg:col-span-8 space-y-6">
-          {/* Card 1: Bakery Brand Profile */}
-          <Card className="p-6 space-y-4">
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-brand-plum border-b border-owner-border pb-3">
-              <Store className="w-4 h-4" />
-              <span>Bakery Identity & Bio</span>
-            </div>
+      {successMsg && (
+        <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span>{successMsg}</span>
+        </div>
+      )}
 
+      {errorMsg && (
+        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+          <span>{errorMsg}</span>
+        </div>
+      )}
+
+      {/* KYC Compliance Status Alerts */}
+      {(verificationInfo?.verificationStatus === 'REJECTED' ||
+        verificationInfo?.verificationStatus === 'ACTION_REQUIRED' ||
+        profile?.verificationStatus === 'REJECTED' ||
+        profile?.verificationStatus === 'ACTION_REQUIRED') && (
+        <div className="p-5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 shadow-soft">
+          <div className="flex items-start gap-3.5">
+            <div className="p-2 rounded-xl bg-amber-100 text-amber-700 shrink-0 mt-0.5">
+              <ShieldAlert className="w-5 h-5" />
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-sm text-amber-950 font-serif">
+                  KYC Verification Action Required
+                </h3>
+                <span className="px-2 py-0.5 rounded-md bg-amber-200/70 text-amber-800 text-[10px] font-bold uppercase tracking-wider">
+                  Action Required
+                </span>
+              </div>
+              <p className="text-xs text-amber-900 leading-relaxed">
+                {verificationInfo?.rejectionReason
+                  ? `Admin Note: "${verificationInfo.rejectionReason}". Please update your bakery registration details or contact platform support.`
+                  : 'Your verification submission was reviewed and requires updates. Please check your FSSAI registration details and re-submit.'}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {(verificationInfo?.verificationStatus === 'VERIFIED' || profile?.verificationStatus === 'VERIFIED') && (
+        <div className="p-3.5 rounded-2xl bg-emerald-50/80 border border-emerald-200 text-emerald-900 flex items-center justify-between gap-3 shadow-soft">
+          <div className="flex items-center gap-2.5">
+            <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span className="text-xs font-semibold">Your bakery has been officially verified by CakeStore Platform Admin.</span>
+          </div>
+          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+            Verified Partner
+          </span>
+        </div>
+      )}
+
+      {/* Tabs */}
+      <div className="inline-flex p-1 rounded-2xl bg-white border border-owner-border shadow-soft">
+        <button
+          type="button"
+          onClick={() => setActiveTab('PROFILE')}
+          className={`flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            activeTab === 'PROFILE'
+              ? 'bg-brand-plum text-white shadow-soft'
+              : 'text-owner-muted hover:text-owner-heading'
+          }`}
+        >
+          <Store className="w-3.5 h-3.5" />
+          <span>Bakery Profile</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('PAYOUT')}
+          className={`flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            activeTab === 'PAYOUT'
+              ? 'bg-brand-plum text-white shadow-soft'
+              : 'text-owner-muted hover:text-owner-heading'
+          }`}
+        >
+          <CreditCard className="w-3.5 h-3.5" />
+          <span>Payout Details (Bank & UPI)</span>
+        </button>
+      </div>
+
+      {/* Tab 1: Bakery Profile */}
+      {activeTab === 'PROFILE' && (
+        <form onSubmit={handleSaveProfile} className="space-y-6">
+          <Card className="p-6 space-y-4">
+            <h2 className="font-serif font-bold text-base text-owner-heading">Identity & Commercials</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
-                label="Bakery Business Name"
-                value={settings.businessName}
-                onChange={(e) => setSettings({ ...settings, businessName: e.target.value })}
+                label="Bakery Registered Name"
                 required
+                value={businessName}
+                onChange={(e) => setBusinessName(e.target.value)}
               />
-              <Select
-                label="Bakery Business Type"
-                value={settings.businessType || 'HOME_BAKER'}
-                onChange={(e) => setSettings({ ...settings, businessType: e.target.value })}
-                options={[
-                  { label: 'Home Baker 🏠', value: 'HOME_BAKER' },
-                  { label: 'Custom Cake Studio ✨', value: 'CUSTOM_CAKE_STUDIO' },
-                  { label: 'Pastry & Dessert Shop 🍰', value: 'PASTRY_SHOP' },
-                  { label: 'Commercial Bakery 🏬', value: 'COMMERCIAL_BAKERY' },
-                ]}
+              <Input
+                label="FSSAI License / Registration #"
+                placeholder="e.g. 11521000000000"
+                value={fssaiRegistration}
+                onChange={(e) => setFssaiRegistration(e.target.value)}
               />
             </div>
 
             <Textarea
-              label="Bakery Description / Story"
+              label="Bakery Story & Customer Bio"
               rows={3}
-              value={settings.description || ''}
-              onChange={(e) => setSettings({ ...settings, description: e.target.value })}
-              placeholder="Tell your customers about your baking passion, fresh ingredients, and specialties..."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Tell cake lovers what makes your bakes unique..."
             />
-
-            {/* Dietary Preference Toggle */}
-            <div className="pt-2">
-              <label className="flex items-center gap-3 p-3.5 rounded-xl border border-owner-border bg-owner-canvas/40 cursor-pointer hover:bg-owner-canvas transition-colors">
-                <input
-                  type="checkbox"
-                  checked={settings.isPureVeg}
-                  onChange={(e) => setSettings({ ...settings, isPureVeg: e.target.checked })}
-                  className="w-4 h-4 text-brand-plum rounded border-owner-border focus:ring-brand-plum"
-                />
-                <div className="flex items-center gap-2">
-                  <Leaf className={`w-4 h-4 ${settings.isPureVeg ? 'text-emerald-600' : 'text-owner-muted'}`} />
-                  <div>
-                    <span className="text-xs font-bold text-owner-heading block">100% Pure Veg (Eggless Only)</span>
-                    <span className="text-2xs text-owner-muted">
-                      Display the green pure veg verified badge on your public storefront and marketplace cards
-                    </span>
-                  </div>
-                </div>
-              </label>
-            </div>
           </Card>
 
-          {/* Card 2: Physical Location & Address */}
           <Card className="p-6 space-y-4">
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-brand-plum border-b border-owner-border pb-3">
-              <MapPin className="w-4 h-4" />
-              <span>Location & Delivery Address</span>
+            <h2 className="font-serif font-bold text-base text-owner-heading">Contact & Kitchen Location</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                label="Kitchen Phone / Order Hotline"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+              />
+              <Input
+                label="Official Notification Email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
             </div>
 
             <Input
-              label="Street Address Line 1"
-              value={settings.addressLine1}
-              onChange={(e) => setSettings({ ...settings, addressLine1: e.target.value })}
+              label="Address Line 1"
               required
+              placeholder="Shop No. 4, Ground Floor, Lane 3"
+              value={addressLine1}
+              onChange={(e) => setAddressLine1(e.target.value)}
+            />
+
+            <Input
+              label="Address Line 2 / Landmark"
+              placeholder="Near Datta Mandir, Akurdi"
+              value={addressLine2}
+              onChange={(e) => setAddressLine2(e.target.value)}
+            />
+
+            <div className="grid grid-cols-3 gap-4">
+              <Input
+                label="City"
+                required
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+              />
+              <Input
+                label="State"
+                required
+                value={state}
+                onChange={(e) => setState(e.target.value)}
+              />
+              <Input
+                label="Pincode"
+                required
+                value={pincode}
+                onChange={(e) => setPincode(e.target.value)}
+              />
+            </div>
+          </Card>
+
+          <Card className="p-6 space-y-4">
+            <h2 className="font-serif font-bold text-base text-owner-heading">Kitchen Operations</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                label="Kitchen Opening Time"
+                value={openingTime}
+                onChange={(e) => setOpeningTime(e.target.value)}
+              />
+              <Input
+                label="Kitchen Closing Time"
+                value={closingTime}
+                onChange={(e) => setClosingTime(e.target.value)}
+              />
+            </div>
+
+            <div className="flex items-center justify-between p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200/70">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-800">
+                  <Leaf className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="font-bold text-xs text-emerald-900">100% Pure Veg (Eggless Only)</p>
+                  <p className="text-[11px] text-emerald-700">Display dedicated green pure veg badge across marketplace</p>
+                </div>
+              </div>
+              <input
+                type="checkbox"
+                checked={isPureVeg}
+                onChange={(e) => setIsPureVeg(e.target.checked)}
+                className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+              />
+            </div>
+          </Card>
+
+          <Button type="submit" size="lg" className="w-full" isLoading={isSaving}>
+            <Save className="w-4 h-4 mr-2" />
+            Save Bakery Profile Settings
+          </Button>
+        </form>
+      )}
+
+      {/* Tab 2: Payout Details */}
+      {activeTab === 'PAYOUT' && (
+        <form onSubmit={handleSavePayout} className="space-y-6">
+          <Card className="p-6 space-y-4">
+            <div className="space-y-1">
+              <h2 className="font-serif font-bold text-base text-owner-heading">Direct Bank Settlement Details</h2>
+              <p className="text-xs text-owner-muted">
+                Funds from online prepaid cake orders will be disbursed directly to this registered bank account with 0% platform commission.
+              </p>
+            </div>
+
+            <Input
+              label="Account Beneficiary / Legal Name"
+              required
+              placeholder="e.g. Pune Artisan Bakes LLP or Baker Name"
+              value={beneficiaryName}
+              onChange={(e) => setBeneficiaryName(e.target.value)}
             />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
-                label="Area / Neighborhood"
-                value={settings.area || ''}
-                onChange={(e) => setSettings({ ...settings, area: e.target.value })}
-                placeholder="Akurdi"
-              />
-              <Input
-                label="City"
-                value={settings.city}
-                onChange={(e) => setSettings({ ...settings, city: e.target.value })}
+                label="Bank Account Number"
                 required
-                list="settings-cities"
-              />
-            </div>
-
-            <datalist id="settings-cities">
-              <option value="Mumbai" />
-              <option value="Pune" />
-              <option value="Bengaluru" />
-              <option value="Delhi NCR" />
-              <option value="Hyderabad" />
-              <option value="Chennai" />
-              <option value="Kolkata" />
-              <option value="Ahmedabad" />
-              <option value="Jaipur" />
-              <option value="Chandigarh" />
-              <option value="Lucknow" />
-              <option value="Kochi" />
-            </datalist>
-
-            <datalist id="settings-states">
-              <option value="Maharashtra" />
-              <option value="Karnataka" />
-              <option value="Delhi NCR" />
-              <option value="Telangana" />
-              <option value="Tamil Nadu" />
-              <option value="West Bengal" />
-              <option value="Gujarat" />
-              <option value="Rajasthan" />
-              <option value="Punjab" />
-              <option value="Kerala" />
-              <option value="Uttar Pradesh" />
-            </datalist>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <Input
-                label="District"
-                value={settings.district || ''}
-                onChange={(e) => setSettings({ ...settings, district: e.target.value })}
-                placeholder="e.g. Pune, Mumbai Suburban"
+                type="password"
+                placeholder="Enter bank account number"
+                value={bankAccountNumber}
+                onChange={(e) => setBankAccountNumber(e.target.value)}
               />
               <Input
-                label="State"
-                value={settings.state}
-                onChange={(e) => setSettings({ ...settings, state: e.target.value })}
+                label="Bank IFSC Code"
                 required
-                list="settings-states"
-              />
-              <Input
-                label="Pincode"
-                value={settings.pincode}
-                onChange={(e) => setSettings({ ...settings, pincode: e.target.value })}
-                required
+                placeholder="e.g. HDFC0001234"
+                value={ifscCode}
+                onChange={(e) => setIfscCode(e.target.value.toUpperCase())}
               />
             </div>
           </Card>
 
-          {/* Card 3: Contact & Social Handles */}
           <Card className="p-6 space-y-4">
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-brand-plum border-b border-owner-border pb-3">
-              <ShieldCheck className="w-4 h-4" />
-              <span>Contact & Compliance</span>
+            <div className="space-y-1">
+              <h2 className="font-serif font-bold text-base text-owner-heading">Instant UPI VPA Handle</h2>
+              <p className="text-xs text-owner-muted">
+                Used for instant real-time settlement transfers and payment link reconciliation.
+              </p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Input
-                label="Customer Contact Phone"
-                value={settings.phone || ''}
-                onChange={(e) => setSettings({ ...settings, phone: e.target.value })}
-              />
-              <Input
-                label="Bakery Email"
-                type="email"
-                value={settings.email || ''}
-                onChange={(e) => setSettings({ ...settings, email: e.target.value })}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Input
-                label="WhatsApp Order Number"
-                value={settings.whatsappNumber || ''}
-                onChange={(e) => setSettings({ ...settings, whatsappNumber: e.target.value })}
-                placeholder="+91 98231 00000"
-              />
-              <Input
-                label="FSSAI Registration Number"
-                value={settings.fssaiRegistration || ''}
-                onChange={(e) => setSettings({ ...settings, fssaiRegistration: e.target.value })}
-                placeholder="FSSAI-21523000000123"
-              />
-            </div>
-          </Card>
-        </div>
-
-        {/* Right Column: Visuals & Hours */}
-        <div className="lg:col-span-4 space-y-6">
-          {/* Live Storefront Preview Card */}
-          <Card className="p-0 overflow-hidden border-0 shadow-md ring-1 ring-owner-border">
-            <div className="relative h-48 w-full bg-owner-canvas overflow-hidden">
-              <img
-                src={settings.coverImageUrl || "https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=1200&q=80"}
-                alt="Bakery Cover"
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=1200&q=80";
-                }}
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
-
-              {/* Bakery Identity Overlay */}
-              <div className="absolute bottom-4 left-5 right-5 flex items-end gap-3 text-white">
-                <div className="w-16 h-16 rounded-2xl bg-white border-2 border-white shadow-md overflow-hidden shrink-0 flex items-center justify-center text-brand-plum font-bold text-xl">
-                  {settings.logoUrl ? (
-                    <img 
-                      src={settings.logoUrl} 
-                      alt="Logo" 
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = 'none';
-                      }}
-                    />
-                  ) : (
-                    <span>{settings.businessName?.slice(0, 2).toUpperCase() || 'BA'}</span>
-                  )}
-                </div>
-
-                <div className="min-w-0 pb-1">
-                  <h3 className="text-lg font-bold font-serif truncate drop-shadow-sm">
-                    {settings.businessName || 'Your Bakery Name'}
-                  </h3>
-                  <p className="text-xs text-gray-200 truncate opacity-90">
-                    {settings.city ? `${settings.city} • ` : ''}{settings.businessType ? settings.businessType.replace('_', ' ') : 'Artisan Bakery'}
-                  </p>
-                </div>
-              </div>
-            </div>
+            <Input
+              label="UPI ID / VPA"
+              placeholder="e.g. yourbakery@okhdfcbank"
+              value={upiId}
+              onChange={(e) => setUpiId(e.target.value)}
+            />
           </Card>
 
-          {/* Visual Showcase Card */}
-          <Card className="p-6 space-y-4">
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-brand-plum border-b border-owner-border pb-3">
-              <ImageIcon className="w-4 h-4" />
-              <span>Storefront Media</span>
-            </div>
+          <div className="p-4 rounded-2xl bg-brand-blush/60 border border-brand-blush-border text-xs text-brand-plum flex items-start gap-3">
+            <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+            <p className="leading-relaxed">
+              <strong>Bank Security Guarantee:</strong> All bank account numbers and routing codes are encrypted at rest with AES-256 standard. CakeStore never retains debit authority on your account.
+            </p>
+          </div>
 
-            <div className="space-y-3">
-              <Input
-                label="Cover Banner Image URL"
-                value={settings.coverImageUrl || ''}
-                onChange={(e) => setSettings({ ...settings, coverImageUrl: e.target.value })}
-                placeholder="https://..."
-              />
-              {settings.coverImageUrl && (
-                <div className="relative w-full h-28 rounded-xl overflow-hidden border border-owner-border">
-                  <Image src={settings.coverImageUrl} alt="Cover Preview" fill className="object-cover" />
-                </div>
-              )}
-            </div>
-
-            <div className="space-y-3 pt-2">
-              <Input
-                label="Logo / Avatar Image URL"
-                value={settings.logoUrl || ''}
-                onChange={(e) => setSettings({ ...settings, logoUrl: e.target.value })}
-                placeholder="https://..."
-              />
-              {settings.logoUrl && (
-                <div className="relative w-16 h-16 rounded-xl overflow-hidden border border-owner-border mx-auto">
-                  <Image src={settings.logoUrl} alt="Logo Preview" fill className="object-cover" />
-                </div>
-              )}
-            </div>
-          </Card>
-
-          {/* Operating Hours Card */}
-          <Card className="p-6 space-y-4">
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-brand-plum border-b border-owner-border pb-3">
-              <Clock className="w-4 h-4" />
-              <span>Operating Hours</span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <Input
-                label="Opening Time"
-                type="time"
-                value={settings.openingTime || '09:00'}
-                onChange={(e) => setSettings({ ...settings, openingTime: e.target.value })}
-              />
-              <Input
-                label="Closing Time"
-                type="time"
-                value={settings.closingTime || '22:00'}
-                onChange={(e) => setSettings({ ...settings, closingTime: e.target.value })}
-              />
-            </div>
-          </Card>
-        </div>
-      </div>
-    </form>
+          <Button type="submit" size="lg" className="w-full" isLoading={isSaving}>
+            <Save className="w-4 h-4 mr-2" />
+            Save Payout Coordinates
+          </Button>
+        </form>
+      )}
+    </div>
   );
 }

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
@@ -9,11 +9,9 @@ import { Footer } from '@/components/common/Footer';
 import { HeroSection } from '@/components/customer/marketplace/HeroSection';
 import { BakeryGrid } from '@/components/customer/marketplace/BakeryGrid';
 import { TrustBadges } from '@/components/customer/marketplace/TrustBadges';
-
 import { OwnerCTA } from '@/components/customer/marketplace/OwnerCTA';
 import { CategoryOption } from '@/components/customer/marketplace/CategoryPills';
-
-import { AdvancedLocationFilter } from '@/components/customer/marketplace/AdvancedLocationFilter';
+import { AdvancedLocationFilter, LocationFilterValues } from '@/components/customer/marketplace/AdvancedLocationFilter';
 
 export default function HomePage() {
   const router = useRouter();
@@ -26,6 +24,7 @@ export default function HomePage() {
   const [activeBusinessType, setActiveBusinessType] = useState<string | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [locationQuery, setLocationQuery] = useState<string>('');
+  const [locationFilters, setLocationFilters] = useState<Partial<LocationFilterValues>>({});
 
   const loadShops = useCallback(async () => {
     setIsLoading(true);
@@ -34,6 +33,10 @@ export default function HomePage() {
       const data = await storefrontApi.searchShops({
         search: searchQuery || undefined,
         location: locationQuery || undefined,
+        state: locationFilters.state,
+        district: locationFilters.district,
+        city: locationFilters.city,
+        area: locationFilters.area,
         businessType: activeBusinessType,
       });
       setShops(data || []);
@@ -42,7 +45,7 @@ export default function HomePage() {
     } finally {
       setIsLoading(false);
     }
-  }, [searchQuery, locationQuery, activeBusinessType]);
+  }, [searchQuery, locationQuery, locationFilters, activeBusinessType]);
 
   useEffect(() => {
     loadShops();
@@ -51,11 +54,30 @@ export default function HomePage() {
   const handleHeroSearch = (params: { search: string; location: string }) => {
     setSearchQuery(params.search);
     setLocationQuery(params.location);
+    setLocationFilters({});
   };
 
   const handleSelectCategory = (category: CategoryOption) => {
     setActiveCategory(category.id);
     setActiveBusinessType(category.businessType);
+  };
+
+  const handleLocationFilterChange = (filters: LocationFilterValues) => {
+    setLocationFilters({
+      state: filters.state,
+      district: filters.district,
+      city: filters.city,
+      area: filters.area,
+    });
+    setLocationQuery(filters.label === 'All Locations' ? '' : filters.label);
+  };
+
+  const handleClearFilters = () => {
+    setActiveCategory('ALL');
+    setActiveBusinessType(undefined);
+    setSearchQuery('');
+    setLocationQuery('');
+    setLocationFilters({});
   };
 
   // Dynamic grid title based on city and category
@@ -84,13 +106,16 @@ export default function HomePage() {
           activeCategory={activeCategory}
           onSelectCategory={handleSelectCategory}
           selectedLocation={locationQuery}
-          onSelectLocation={(loc) => setLocationQuery(loc)}
+          onSelectLocation={(loc) => {
+            setLocationQuery(loc);
+            setLocationFilters({});
+          }}
         />
 
         {/* Standalone Advanced Location Filter */}
         <div className="px-4 sm:px-6 lg:px-8">
           <AdvancedLocationFilter
-            onLocationSelect={(loc) => setLocationQuery(loc === 'All Locations' ? '' : loc)}
+            onFilterChange={handleLocationFilterChange}
             shopCount={shops.length}
           />
         </div>
@@ -101,6 +126,7 @@ export default function HomePage() {
           isLoading={isLoading}
           error={error}
           onRetry={loadShops}
+          onClearFilters={handleClearFilters}
           title={getGridTitle()}
           subtitle={
             locationQuery.toLowerCase().includes('near')
@@ -109,14 +135,7 @@ export default function HomePage() {
               ? `Showing verified kitchens delivering freshly baked celebration cakes in ${locationQuery}`
               : 'Direct ordering from verified kitchens with dedicated in-store fulfillment across Indian cities'
           }
-
         />
-
-        {/* How CakeStore Works: 3 Step Ordering Journey */}
-        
-
-        {/* Real Customer Stories & Testimonials */}
-        
 
         {/* Trust & Food Safety Guarantees */}
         <TrustBadges />

@@ -19,31 +19,58 @@ public class ShopAccessValidator {
     private final ShopRepository shopRepository;
     private final SubscriptionRepository subscriptionRepository;
 
+    /**
+     * Basic shop lookup by owner ID. Ensures tenant isolation (shop belongs to owner).
+     * Does NOT enforce operational lifecycle gating, allowing account recovery, settings, and subscription viewing.
+     */
     @Transactional(readOnly = true)
-    public Shop getValidShopForOwner(Long ownerId) {
+    public Shop getShopByOwnerId(Long ownerId) {
         List<Shop> shops = shopRepository.findByOwnerId(ownerId);
         if (shops.isEmpty()) {
             throw new IllegalArgumentException("Shop not found for this user");
         }
-        
-        Shop shop = shops.get(0);
-        
-        // TEMPORARILY DISABLED FOR LOCAL TESTING:
-        // // Check 1: Must be VERIFIED
-        // if (shop.getVerificationStatus() != VerificationStatus.VERIFIED) {
-        //     throw new com.cakeplatform.api.exception.SubscriptionExpiredException("Shop is not verified yet.");
-        // }
-        // 
-        // // Check 2: Active Subscription
-        // Subscription latestSub = subscriptionRepository.findFirstByShopIdOrderByCreatedAtDesc(shop.getId())
-        //     .orElseThrow(() -> new com.cakeplatform.api.exception.SubscriptionExpiredException("No subscription found. Please subscribe to a plan."));
-        // 
-        // if (latestSub.getStatus() == SubscriptionStatus.EXPIRED || 
-        //     latestSub.getStatus() == SubscriptionStatus.SUSPENDED || 
-        //     latestSub.getStatus() == SubscriptionStatus.CANCELLED) {
-        //     throw new com.cakeplatform.api.exception.SubscriptionExpiredException("Subscription is " + latestSub.getStatus().name() + ". Please renew to access this feature.");
-        // }
-        
+        return shops.get(0);
+    }
+
+    /**
+     * Strict operational access gating for owner actions.
+     * Enforces:
+     * 1. Shop exists for owner (Tenant Isolation)
+     * 2. Shop is not SUSPENDED
+     * 3. Shop is VERIFIED
+     * 4. Shop has an ACTIVE (unexpired) Subscription
+     * 5. Shop status is ACTIVE
+     */
+    @Transactional(readOnly = true)
+    public Shop getValidShopForOwner(Long ownerId) {
+        Shop shop = getShopByOwnerId(ownerId);
+
+        // Check 0: Suspended shops must be blocked from operational functions
+        if (shop.getStatus() == com.cakeplatform.api.modules.shop.ShopStatus.SUSPENDED) {
+            throw new com.cakeplatform.api.exception.SubscriptionExpiredException("Shop is suspended by administration. Please contact support.");
+        }
+
+        // Check 1: Must be VERIFIED
+        if (shop.getVerificationStatus() != VerificationStatus.VERIFIED) {
+            throw new com.cakeplatform.api.exception.SubscriptionExpiredException("Shop is not verified yet.");
+        }
+
+        // Check 2: Active Subscription
+        Subscription latestSub = subscriptionRepository.findFirstByShopIdOrderByCreatedAtDesc(shop.getId())
+                .orElseThrow(() -> new com.cakeplatform.api.exception.SubscriptionExpiredException("No subscription found. Please subscribe to a plan."));
+
+        if (latestSub.getStatus() == SubscriptionStatus.EXPIRED || 
+            latestSub.getStatus() == SubscriptionStatus.SUSPENDED || 
+            latestSub.getStatus() == SubscriptionStatus.CANCELLED ||
+            (latestSub.getExpiryDate() != null && latestSub.getExpiryDate().isBefore(java.time.LocalDateTime.now()))) {
+            throw new com.cakeplatform.api.exception.SubscriptionExpiredException("Subscription is " + latestSub.getStatus().name() + ". Please renew to access this feature.");
+        }
+
+        // Check 3: Shop must be ACTIVE
+        if (shop.getStatus() != com.cakeplatform.api.modules.shop.ShopStatus.ACTIVE) {
+            throw new com.cakeplatform.api.exception.SubscriptionExpiredException("Shop is currently " + shop.getStatus().name() + ". Please activate your subscription.");
+        }
+
         return shop;
     }
 }

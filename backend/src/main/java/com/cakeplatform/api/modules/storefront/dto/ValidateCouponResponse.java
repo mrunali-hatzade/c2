@@ -1,0 +1,23 @@
+package com.cakeplatform.api.modules.storefront.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import java.math.BigDecimal;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class ValidateCouponResponse {
+    private boolean valid;
+    private String code;
+    private String discountType;
+    private BigDecimal discountValue;
+    private BigDecimal discountAmount;
+    private BigDecimal minOrderValue;
+    private BigDecimal maxDiscountCap;
+    private BigDecimal newSubtotal;
+    private String message;
+}

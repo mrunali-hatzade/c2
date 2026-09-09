@@ -10,6 +10,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import com.cakeplatform.api.security.CustomUserDetails;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+
 import java.util.List;
 import java.util.Map;
 
@@ -39,10 +42,26 @@ public class AdminDashboardController {
     @PatchMapping("/shops/{shopId}/status")
     public ResponseEntity<Shop> updateShopStatus(
             @PathVariable Long shopId,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestBody Map<String, String> payload) {
         
         String newStatus = payload.get("status");
-        Shop updated = adminDashboardService.updateShopStatus(shopId, newStatus);
+        String reason = payload.get("reason");
+        Long actorUserId = (userDetails != null) ? userDetails.getId() : null;
+        Shop updated = adminDashboardService.updateShopStatus(shopId, newStatus, reason, actorUserId);
+        return ResponseEntity.ok(updated);
+    }
+
+    @PatchMapping("/shops/{shopId}/verification")
+    public ResponseEntity<Shop> reviewShopVerification(
+            @PathVariable Long shopId,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestBody Map<String, String> payload) {
+        
+        String action = payload.get("action");
+        String reason = payload.get("reason");
+        Long actorUserId = (userDetails != null) ? userDetails.getId() : null;
+        Shop updated = adminDashboardService.reviewShopVerification(shopId, action, reason, actorUserId);
         return ResponseEntity.ok(updated);
     }
 }

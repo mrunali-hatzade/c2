@@ -23,11 +23,23 @@ public class ShopStatusManager {
     }
 
     @Transactional
+    public void suspendShop(Long shopId, Long actorUserId, String reason) {
+        String metadata = (reason != null && !reason.trim().isEmpty())
+                ? "Suspended: " + reason.trim()
+                : "Status changed to SUSPENDED";
+        changeShopStatus(shopId, ShopStatus.SUSPENDED, actorUserId, "SHOP_SUSPENDED", metadata);
+    }
+
+    @Transactional
     public void suspendShop(Long shopId, Long actorUserId) {
-        changeShopStatus(shopId, ShopStatus.SUSPENDED, actorUserId, "SHOP_SUSPENDED");
+        suspendShop(shopId, actorUserId, null);
     }
 
     private void changeShopStatus(Long shopId, ShopStatus newStatus, Long actorUserId, String action) {
+        changeShopStatus(shopId, newStatus, actorUserId, action, "Status changed to " + newStatus.name());
+    }
+
+    private void changeShopStatus(Long shopId, ShopStatus newStatus, Long actorUserId, String action, String metadata) {
         Shop shop = shopRepository.findById(shopId)
                 .orElseThrow(() -> new RuntimeException("Shop not found"));
         
@@ -40,7 +52,7 @@ public class ShopStatusManager {
                 action,
                 "SHOP",
                 shopId,
-                "Status changed to " + newStatus.name()
+                metadata
         );
     }
 }

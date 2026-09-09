@@ -5,6 +5,8 @@ import com.cakeplatform.api.modules.product.Product;
 import com.cakeplatform.api.modules.storefront.dto.GuestOrderRequest;
 import com.cakeplatform.api.modules.storefront.dto.StorefrontShopResponse;
 import com.cakeplatform.api.modules.storefront.dto.StorefrontDeliverySlotResponse;
+import com.cakeplatform.api.modules.storefront.dto.ValidateCouponRequest;
+import com.cakeplatform.api.modules.storefront.dto.ValidateCouponResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +20,11 @@ import java.util.List;
 public class CustomerStorefrontController {
 
     private final CustomerStorefrontService storefrontService;
+
+    @GetMapping("/{shopId}/categories")
+    public ResponseEntity<List<com.cakeplatform.api.modules.product.dto.CategoryResponse>> getShopCategories(@PathVariable Long shopId) {
+        return ResponseEntity.ok(storefrontService.getShopCategories(shopId));
+    }
 
     @GetMapping("/{shopId}")
     public ResponseEntity<StorefrontShopResponse> getShopDetails(@PathVariable Long shopId) {
@@ -69,6 +76,13 @@ public class CustomerStorefrontController {
             @PathVariable Long shopId,
             @Valid @RequestBody GuestOrderRequest request) {
         return ResponseEntity.ok(storefrontService.placeGuestOrder(shopId, request));
+    }
+
+    @PostMapping("/{shopId}/coupons/validate")
+    public ResponseEntity<ValidateCouponResponse> validateCoupon(
+            @PathVariable Long shopId,
+            @Valid @RequestBody ValidateCouponRequest request) {
+        return ResponseEntity.ok(storefrontService.validateCouponForStorefront(shopId, request));
     }
 
     @GetMapping("/orders/{orderNumber}")

@@ -153,7 +153,8 @@ public class CustomerStorefrontServiceTest {
         coupon.setIsActive(true);
         coupon.setUsedCount(0);
 
-        when(couponRepository.findByShopIdAndCode(1L, "MINUS10")).thenReturn(Optional.of(coupon));
+        when(couponRepository.findByShopIdAndCodeIgnoreCase(1L, "MINUS10")).thenReturn(Optional.of(coupon));
+        when(couponRepository.incrementUsedCountIfWithinLimit(1L)).thenReturn(1);
 
         GuestOrderRequest request = new GuestOrderRequest();
         request.setCustomerName("Test");
@@ -179,7 +180,6 @@ public class CustomerStorefrontServiceTest {
         // Total = 20 - 10 + 50 (delivery) = 60
         assertEquals(0, BigDecimal.valueOf(60.00).compareTo(savedOrder.getTotalAmount()));
         assertEquals("MINUS10", savedOrder.getCouponCode());
-        verify(couponRepository).save(coupon);
-        assertEquals(1, coupon.getUsedCount());
+        verify(couponRepository).incrementUsedCountIfWithinLimit(1L);
     }
 }

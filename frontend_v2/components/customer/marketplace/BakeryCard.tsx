@@ -35,8 +35,13 @@ export const BakeryCard: React.FC<BakeryCardProps> = ({ shop }) => {
 
         {/* Top Badges Row */}
         <div className="absolute top-3 left-3 right-3 flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 flex-wrap">
             <StatusBadge status={shop.status} />
+            {shop.verificationStatus === 'VERIFIED' && (
+              <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-600 text-white shadow-xs">
+                <ShieldCheck className="w-3 h-3" /> Verified
+              </span>
+            )}
             {shop.isPureVeg && (
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-600 text-white shadow-xs">
                 🌱 Pure Veg
@@ -44,13 +49,19 @@ export const BakeryCard: React.FC<BakeryCardProps> = ({ shop }) => {
             )}
           </div>
 
-          <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/95 backdrop-blur-xs text-brand-espresso font-bold text-xs shadow-xs">
-            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />
-            <span>{shop.rating || 4.8}</span>
-            {shop.reviewCount && (
-              <span className="text-[10px] text-brand-muted font-normal">({shop.reviewCount})</span>
-            )}
-          </div>
+          {shop.rating ? (
+            <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/95 backdrop-blur-xs text-brand-espresso font-bold text-xs shadow-xs">
+              <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />
+              <span>{shop.rating.toFixed(1)}</span>
+              {shop.reviewCount ? (
+                <span className="text-[10px] text-brand-muted font-normal">({shop.reviewCount})</span>
+              ) : null}
+            </div>
+          ) : (
+            <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white/90 backdrop-blur-xs text-brand-espresso text-[10px] font-semibold shadow-xs">
+              <span>New</span>
+            </div>
+          )}
         </div>
 
         {/* Floating Brand Avatar Logo */}

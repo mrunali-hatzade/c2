@@ -130,9 +130,11 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 
             <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white">
-              <span className="text-[11px] font-bold uppercase tracking-wider bg-white/20 backdrop-blur-md px-2.5 py-0.5 rounded-full">
-                {product.category?.replace(/_/g, ' ').toLowerCase()}
-              </span>
+              {(product.categoryName || product.category) && (
+                <span className="text-[11px] font-bold uppercase tracking-wider bg-white/20 backdrop-blur-md px-2.5 py-0.5 rounded-full">
+                  {product.categoryName || product.category?.replace(/_/g, ' ').toLowerCase()}
+                </span>
+              )}
               <Badge variant={product.isEggless ? 'success' : 'default'} size="sm">
                 {product.isEggless ? '🌱 100% Eggless' : 'Contains Egg'}
               </Badge>

@@ -1,17 +1,21 @@
 export interface DeliverySlot {
   id: number;
-  shopId: number;
-  name: string;
-  startTime: string; // HH:mm
-  endTime: string;   // HH:mm
-  maxOrdersPerDay: number;
+  shopId?: number;
+  dayOfWeek: string;
+  name?: string;
+  startTime: string; // HH:mm or HH:mm:ss
+  endTime: string;   // HH:mm or HH:mm:ss
+  maxOrders: number;
+  maxOrdersPerDay?: number;
   isActive: boolean;
 }
 
 export interface CreateDeliverySlotRequest {
-  name: string;
+  dayOfWeek: string;
+  name?: string;
   startTime: string;
   endTime: string;
-  maxOrdersPerDay: number;
+  maxOrders: number;
+  maxOrdersPerDay?: number;
   isActive: boolean;
 }

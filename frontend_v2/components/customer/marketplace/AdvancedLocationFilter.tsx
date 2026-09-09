@@ -31,13 +31,23 @@ const LOCATION_HIERARCHY: Record<string, Record<string, Record<string, string[]>
   },
 };
 
+export interface LocationFilterValues {
+  state?: string;
+  district?: string;
+  city?: string;
+  area?: string;
+  label: string;
+}
+
 interface AdvancedLocationFilterProps {
-  onLocationSelect: (location: string) => void;
+  onLocationSelect?: (location: string) => void;
+  onFilterChange?: (filters: LocationFilterValues) => void;
   shopCount?: number;
 }
 
 export const AdvancedLocationFilter: React.FC<AdvancedLocationFilterProps> = ({
   onLocationSelect,
+  onFilterChange,
   shopCount = 0,
 }) => {
   const [state, setState] = useState<string>('');
@@ -63,7 +73,17 @@ export const AdvancedLocationFilter: React.FC<AdvancedLocationFilterProps> = ({
 
   // Trigger search on any change
   useEffect(() => {
-    onLocationSelect(getActiveFilterLabel());
+    const label = getActiveFilterLabel();
+    if (onLocationSelect) onLocationSelect(label);
+    if (onFilterChange) {
+      onFilterChange({
+        state: state || undefined,
+        district: district || undefined,
+        city: city || undefined,
+        area: area || undefined,
+        label,
+      });
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, district, city, area]);
 

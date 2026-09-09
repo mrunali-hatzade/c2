@@ -101,6 +101,15 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
       const errorMessage =
         (typeof responseData === 'object' && responseData !== null && (responseData.message || responseData.error)) ||
         `Request failed with status ${response.status}`;
+
+      // Auto-logout on token expiry or unauthorized access
+      if (response.status === 401) {
+        clearStoredToken();
+        if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+          window.location.href = `/login?session=expired`;
+        }
+      }
+
       throw new ApiError(response.status, errorMessage, responseData);
     }
 

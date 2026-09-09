@@ -6,21 +6,13 @@
 ### 0. Register & Authenticate as Admin
 ### =========================================
 
-### 0a. Promote John Doe to Admin
-POST {{authUrl}}/make-admin
-Content-Type: application/json
-
-{
-    "email": "john.doe@example.com"
-}
-
-### 0b. Login as John Doe (now an Admin)
+### 0. Login as Platform Administrator
 # @name loginAdmin
 POST {{authUrl}}/login
 Content-Type: application/json
 
 {
-    "email": "john.doe@example.com",
+    "email": "admin@cakeplatform.com",
     "password": "Password123!"
 }
 

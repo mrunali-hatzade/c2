@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -9,8 +9,7 @@ import { Footer } from '@/components/common/Footer';
 import { SearchBar } from '@/components/common/SearchBar';
 import { BakeryGrid } from '@/components/customer/marketplace/BakeryGrid';
 import { CategoryPills, CategoryOption } from '@/components/customer/marketplace/CategoryPills';
-
-import { AdvancedLocationFilter } from '@/components/customer/marketplace/AdvancedLocationFilter';
+import { AdvancedLocationFilter, LocationFilterValues } from '@/components/customer/marketplace/AdvancedLocationFilter';
 
 function ExploreContent() {
   const searchParams = useSearchParams();
@@ -26,6 +25,7 @@ function ExploreContent() {
   const [activeBusinessType, setActiveBusinessType] = useState<string | undefined>(initialType);
   const [searchQuery, setSearchQuery] = useState<string>(initialSearch);
   const [locationQuery, setLocationQuery] = useState<string>(initialLocation);
+  const [locationFilters, setLocationFilters] = useState<Partial<LocationFilterValues>>({});
 
   const fetchShops = useCallback(async () => {
     setIsLoading(true);
@@ -34,6 +34,10 @@ function ExploreContent() {
       const data = await storefrontApi.searchShops({
         search: searchQuery || undefined,
         location: locationQuery || undefined,
+        state: locationFilters.state,
+        district: locationFilters.district,
+        city: locationFilters.city,
+        area: locationFilters.area,
         businessType: activeBusinessType,
       });
       setShops(data || []);
@@ -42,7 +46,7 @@ function ExploreContent() {
     } finally {
       setIsLoading(false);
     }
-  }, [searchQuery, locationQuery, activeBusinessType]);
+  }, [searchQuery, locationQuery, locationFilters, activeBusinessType]);
 
   useEffect(() => {
     fetchShops();
@@ -51,11 +55,30 @@ function ExploreContent() {
   const handleSearch = (params: { search: string; location: string }) => {
     setSearchQuery(params.search);
     setLocationQuery(params.location);
+    setLocationFilters({});
   };
 
   const handleSelectCategory = (category: CategoryOption) => {
     setActiveCategory(category.id);
     setActiveBusinessType(category.businessType);
+  };
+
+  const handleLocationFilterChange = (filters: LocationFilterValues) => {
+    setLocationFilters({
+      state: filters.state,
+      district: filters.district,
+      city: filters.city,
+      area: filters.area,
+    });
+    setLocationQuery(filters.label === 'All Locations' ? '' : filters.label);
+  };
+
+  const handleClearFilters = () => {
+    setActiveCategory('ALL');
+    setActiveBusinessType(undefined);
+    setSearchQuery('');
+    setLocationQuery('');
+    setLocationFilters({});
   };
 
   const getTitle = () => {
@@ -89,7 +112,7 @@ function ExploreContent() {
 
       {/* Advanced Location Filter */}
       <AdvancedLocationFilter 
-        onLocationSelect={(loc) => setLocationQuery(loc === 'All Locations' ? '' : loc)}
+        onFilterChange={handleLocationFilterChange}
         shopCount={shops.length}
       />
 
@@ -107,13 +130,13 @@ function ExploreContent() {
         isLoading={isLoading}
         error={error}
         onRetry={fetchShops}
+        onClearFilters={handleClearFilters}
         title={getTitle()}
         subtitle={
           locationQuery
             ? `Showing verified kitchens delivering freshly baked celebration cakes in ${locationQuery}`
             : 'Connect directly with certified creators for custom quotes and order delivery across India'
         }
-
       />
     </main>
   );
@@ -123,7 +146,7 @@ export default function ExplorePage() {
   return (
     <div className="min-h-screen flex flex-col bg-brand-cream-light">
       <Navbar />
-      <Suspense fallback={<div className="p-16 text-center font-serif">Loading Bakeries...</div>}>
+      <Suspense fallback={<div className="p-16 text-center font-serif text-brand-espresso">Loading Bakeries...</div>}>
         <ExploreContent />
       </Suspense>
       <Footer />

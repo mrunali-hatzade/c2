@@ -13,10 +13,10 @@ export interface CategoryOption {
 
 export const CATEGORIES: CategoryOption[] = [
   { id: 'ALL', label: 'All Bakeries', icon: <Store className="w-4 h-4" /> },
-  { id: 'HOME_BAKER', label: 'Home Bakers', icon: <Heart className="w-4 h-4" />, businessType: 'HOME_BAKER' },
-  { id: 'CUSTOM_CAKE_STUDIO', label: 'Custom Studios', icon: <Sparkles className="w-4 h-4" />, businessType: 'CUSTOM_CAKE_STUDIO' },
-  { id: 'PASTRY_SHOP', label: 'Pastry Boutiques', icon: <Cake className="w-4 h-4" />, businessType: 'PASTRY_SHOP' },
-  { id: 'COMMERCIAL_BAKERY', label: 'Commercial Bakes', icon: <Award className="w-4 h-4" />, businessType: 'COMMERCIAL_BAKERY' },
+  { id: 'HOME_BAKERY', label: 'Home Bakers', icon: <Heart className="w-4 h-4" />, businessType: 'HOME_BAKERY' },
+  { id: 'CAKE_STUDIO', label: 'Custom Studios', icon: <Sparkles className="w-4 h-4" />, businessType: 'CAKE_STUDIO' },
+  { id: 'BAKERY_SHOP', label: 'Pastry Boutiques', icon: <Cake className="w-4 h-4" />, businessType: 'BAKERY_SHOP' },
+  { id: 'ONLINE_CAKE_BUSINESS', label: 'Cloud Bakeries', icon: <Award className="w-4 h-4" />, businessType: 'ONLINE_CAKE_BUSINESS' },
   { id: 'EGGLESS', label: '100% Eggless', icon: <Star className="w-4 h-4" /> },
 ];
 

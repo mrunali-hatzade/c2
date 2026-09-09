@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import { Cake, Sparkles, Filter, Search } from 'lucide-react';
 import { storefrontApi } from '@/lib/api/storefront';
 import { Shop } from '@/types/shop';
-import { Product } from '@/types/product';
+import { Product, Category } from '@/types/product';
 import { useCart } from '@/context/CartContext';
 import { StorefrontNavbar } from '@/components/customer/storefront/StorefrontNavbar';
 import { StorefrontBanner } from '@/components/customer/storefront/StorefrontBanner';
@@ -27,11 +27,12 @@ export default function StorefrontPage() {
 
   const [shop, setShop] = useState<Shop | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Filter & Search states
-  const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
+  const [selectedCategoryId, setSelectedCategoryId] = useState<'ALL' | number>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [egglessOnly, setEgglessOnly] = useState<boolean>(false);
 
@@ -45,12 +46,14 @@ export default function StorefrontPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const [shopData, productsData] = await Promise.all([
+      const [shopData, productsData, categoriesData] = await Promise.all([
         storefrontApi.getShopById(shopId),
         storefrontApi.getStorefrontProducts(shopId),
+        storefrontApi.getStorefrontCategories(shopId),
       ]);
       setShop(shopData);
       setProducts(productsData || []);
+      setCategories(categoriesData || []);
     } catch (err: any) {
       setError(err.message || 'Failed to load storefront');
     } finally {
@@ -67,12 +70,10 @@ export default function StorefrontPage() {
     setIsDetailModalOpen(true);
   };
 
-  // Derive unique categories from products
-  const categories = ['ALL', ...Array.from(new Set(products.map((p) => p.category).filter(Boolean)))];
-
-  // Filter products
+  // Filter products by category ID, search query, and eggless preference
   const filteredProducts = products.filter((p) => {
-    const matchesCategory = selectedCategory === 'ALL' || p.category === selectedCategory;
+    const matchesCategory =
+      selectedCategoryId === 'ALL' || p.categoryId === selectedCategoryId;
     const matchesSearch =
       !searchQuery ||
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -157,22 +158,36 @@ export default function StorefrontPage() {
           </div>
         </div>
 
-        {/* Category Filter Pills */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-4 mb-8 scrollbar-none">
-          {categories.map((cat) => (
+        {/* Category Filter Pills (rendered only when shop has categories) */}
+        {categories.length > 0 && (
+          <div className="flex items-center gap-2 overflow-x-auto pb-4 mb-8 scrollbar-none max-w-full">
             <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
+              type="button"
+              onClick={() => setSelectedCategoryId('ALL')}
               className={`px-4 py-2 rounded-full text-xs font-medium transition-all whitespace-nowrap shrink-0 border ${
-                selectedCategory === cat
+                selectedCategoryId === 'ALL'
                   ? 'bg-brand-plum text-white border-brand-plum shadow-sm'
                   : 'bg-white text-brand-espresso border-brand-border/80 hover:bg-brand-blush/60'
               }`}
             >
-              {cat === 'ALL' ? 'All Items' : cat.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())}
+              All Items
             </button>
-          ))}
-        </div>
+            {categories.map((cat) => (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => setSelectedCategoryId(cat.id)}
+                className={`px-4 py-2 rounded-full text-xs font-medium transition-all whitespace-nowrap shrink-0 border ${
+                  selectedCategoryId === cat.id
+                    ? 'bg-brand-plum text-white border-brand-plum shadow-sm'
+                    : 'bg-white text-brand-espresso border-brand-border/80 hover:bg-brand-blush/60'
+                }`}
+              >
+                {cat.name}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Products Grid */}
         {filteredProducts.length === 0 ? (
@@ -182,7 +197,7 @@ export default function StorefrontPage() {
             description="No items match your selected filters. Try clearing your search or category."
           />
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
             {filteredProducts.map((product) => (
               <ProductCard
                 key={product.id}

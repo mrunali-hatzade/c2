@@ -10,4 +10,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmail(String email);
     
     java.util.List<User> findByRole(UserRole role);
+    
+    long countByCreatedAtGreaterThanEqual(java.time.LocalDateTime startOfDay);
 }

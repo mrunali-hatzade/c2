@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import {
@@ -21,12 +21,17 @@ import {
   Activity,
   AlertTriangle,
   RefreshCw,
+  ExternalLink,
+  Ban,
+  FileCheck,
 } from 'lucide-react';
-import { getShopDetails, updateShopStatus } from '@/lib/api/admin';
-import { AdminShopDetails } from '@/types/admin';
+import { getShopDetails, updateShopStatus, updateShopVerification } from '@/lib/api/admin';
+import { AdminShopDetails, BusinessDocumentItem } from '@/types/admin';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { Modal } from '@/components/ui/Modal';
+import { Textarea } from '@/components/ui/Textarea';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { useToast } from '@/components/common/Toast';
 
@@ -39,9 +44,20 @@ export default function AdminShopDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [isMutating, setIsMutating] = useState(false);
+
+  // Suspension Modal State (B2)
+  const [isSuspendModalOpen, setIsSuspendModalOpen] = useState(false);
+  const [suspensionReason, setSuspensionReason] = useState('');
+  const [suspensionError, setSuspensionError] = useState<string | null>(null);
+
+  // KYC Rejection Modal State (B3)
+  const [isRejectKycModalOpen, setIsRejectKycModalOpen] = useState(false);
+  const [kycRejectionReason, setKycRejectionReason] = useState('');
+  const [kycRejectionError, setKycRejectionError] = useState<string | null>(null);
+
   const toast = useToast();
 
-  const loadShop = React.useCallback(async (isManual = false) => {
+  const loadShop = useCallback(async (isManual = false) => {
     if (!shopId) return;
     if (isManual) setRefreshing(true);
     else setIsLoading(true);
@@ -61,12 +77,21 @@ export default function AdminShopDetailPage() {
     loadShop();
   }, [loadShop]);
 
-  const handleStatusUpdate = async (newStatus: string) => {
+  const handleStatusUpdate = async (newStatus: string, reason?: string) => {
     if (!shopId) return;
+    if (newStatus === 'SUSPENDED' && (!reason || !reason.trim())) {
+      setSuspensionError('Suspension reason is mandatory and cannot be blank.');
+      return;
+    }
+
     setIsMutating(true);
     try {
-      await updateShopStatus(shopId, newStatus);
+      await updateShopStatus(shopId, newStatus, reason?.trim());
       toast.success(`Bakery #${shopId} status changed to ${newStatus}`);
+      setIsSuspendModalOpen(false);
+      setSuspensionReason('');
+      setSuspensionError(null);
+
       // Optimistic update
       if (details) {
         setDetails({
@@ -78,8 +103,10 @@ export default function AdminShopDetailPage() {
           activityLogs: [
             {
               id: Date.now(),
-              action: 'STATUS_CHANGE',
-              details: `Super Admin changed shop status to ${newStatus}`,
+              action: newStatus === 'SUSPENDED' ? 'SHOP_SUSPENDED' : 'STATUS_CHANGE',
+              details: newStatus === 'SUSPENDED'
+                ? `Admin suspended shop: ${reason?.trim()}`
+                : `Admin changed shop status to ${newStatus}`,
               createdAt: new Date().toISOString(),
             },
             ...(details.activityLogs || []),
@@ -88,6 +115,54 @@ export default function AdminShopDetailPage() {
       }
     } catch (err: any) {
       toast.error(err.message || 'Failed to update shop status');
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
+  const handleVerificationReview = async (action: 'APPROVE' | 'REJECT', reason?: string) => {
+    if (!shopId) return;
+    if (action === 'REJECT' && (!reason || !reason.trim())) {
+      setKycRejectionError('Rejection reason is mandatory and cannot be blank.');
+      return;
+    }
+
+    setIsMutating(true);
+    try {
+      await updateShopVerification(shopId, action, reason?.trim());
+      const newStatus = action === 'APPROVE' ? 'VERIFIED' : 'REJECTED';
+      toast.success(`Bakery #${shopId} KYC compliance marked as ${newStatus}`);
+      setIsRejectKycModalOpen(false);
+      setKycRejectionReason('');
+      setKycRejectionError(null);
+
+      // Optimistic update
+      if (details) {
+        setDetails({
+          ...details,
+          shop: {
+            ...details.shop,
+            verificationStatus: newStatus,
+          },
+          businessDocuments: (details.businessDocuments || []).map((d) => ({
+            ...d,
+            status: newStatus,
+          })),
+          activityLogs: [
+            {
+              id: Date.now(),
+              action: action === 'APPROVE' ? 'KYC_VERIFIED' : 'KYC_REJECTED',
+              details: action === 'APPROVE'
+                ? 'Admin verified bakery KYC compliance documents'
+                : `Admin rejected KYC: ${reason?.trim()}`,
+              createdAt: new Date().toISOString(),
+            },
+            ...(details.activityLogs || []),
+          ],
+        });
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to review verification');
     } finally {
       setIsMutating(false);
     }
@@ -110,15 +185,42 @@ export default function AdminShopDetailPage() {
     );
   }
 
-  const { shop, subscriptions = [], payments = [], activityLogs = [] } = details;
+  const { shop, subscriptions = [], payments = [], activityLogs = [], businessDocuments = [] } = details;
 
   const getStatusBadge = (status: string) => {
     const s = status.toUpperCase();
     if (s === 'ACTIVE') return <Badge variant="success">Active Storefront</Badge>;
-    if (s === 'PENDING' || s === 'PENDING_APPROVAL') return <Badge variant="warning">Pending KYC Review</Badge>;
+    if (s === 'PENDING' || s === 'PENDING_APPROVAL') return <Badge variant="warning">Pending Review</Badge>;
     if (s === 'SUSPENDED') return <Badge variant="error">Suspended</Badge>;
-    if (s === 'REJECTED') return <Badge variant="default">Rejected</Badge>;
+    if (s === 'INACTIVE') return <Badge variant="default">Inactive</Badge>;
+    if (s === 'REJECTED') return <Badge variant="error">Rejected</Badge>;
     return <Badge variant="default">{status}</Badge>;
+  };
+
+  const getVerificationBadge = (vStatus?: string) => {
+    const s = (vStatus || 'PROCESSING').toUpperCase();
+    if (s === 'VERIFIED') {
+      return (
+        <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+          <ShieldCheck className="w-3.5 h-3.5" />
+          <span>KYC Verified</span>
+        </span>
+      );
+    }
+    if (s === 'REJECTED') {
+      return (
+        <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200">
+          <ShieldAlert className="w-3.5 h-3.5" />
+          <span>KYC Rejected</span>
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+        <Clock className="w-3.5 h-3.5" />
+        <span>KYC Under Review</span>
+      </span>
+    );
   };
 
   return (
@@ -160,6 +262,7 @@ export default function AdminShopDetailPage() {
                   {shop.businessName}
                 </h1>
                 {getStatusBadge(shop.status)}
+                {getVerificationBadge(shop.verificationStatus)}
                 {shop.isPureVeg && (
                   <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
                     🌱 100% Pure Veg
@@ -185,7 +288,7 @@ export default function AdminShopDetailPage() {
                 className="bg-emerald-600 hover:bg-emerald-700 border-emerald-700 gap-1.5"
               >
                 <CheckCircle2 className="w-4 h-4" />
-                <span>Approve & Activate</span>
+                <span>Activate Storefront</span>
               </Button>
             )}
 
@@ -194,10 +297,10 @@ export default function AdminShopDetailPage() {
                 variant="danger"
                 size="sm"
                 disabled={isMutating}
-                onClick={() => handleStatusUpdate('SUSPENDED')}
+                onClick={() => setIsSuspendModalOpen(true)}
                 className="gap-1.5"
               >
-                <XCircle className="w-4 h-4" />
+                <Ban className="w-4 h-4" />
                 <span>Suspend Storefront</span>
               </Button>
             )}
@@ -268,12 +371,15 @@ export default function AdminShopDetailPage() {
       {/* Two Column Layout: Business KYC vs Activity & Subscription History */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left Column: Business & KYC Profile */}
-        <Card className="p-6 border-slate-200/80 shadow-soft space-y-5">
-          <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
-            <FileText className="w-4 h-4 text-indigo-600" />
-            <h3 className="font-serif font-bold text-base text-slate-900">
-              Bakery KYC & Profile Audit
-            </h3>
+        <Card className="p-6 border-slate-200/80 shadow-soft space-y-6">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div className="flex items-center gap-2">
+              <FileText className="w-4 h-4 text-indigo-600" />
+              <h3 className="font-serif font-bold text-base text-slate-900">
+                Bakery KYC & Compliance Dossier
+              </h3>
+            </div>
+            {getVerificationBadge(shop.verificationStatus)}
           </div>
 
           <div className="space-y-4 text-xs">
@@ -318,13 +424,96 @@ export default function AdminShopDetailPage() {
             <div className="p-3.5 rounded-xl bg-indigo-50/60 border border-indigo-100 space-y-1">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-bold text-indigo-700 uppercase">
-                  FSSAI Food License
+                  FSSAI Food License #
                 </span>
-                <span className="text-[10px] font-semibold text-emerald-600">Compliance Audit</span>
+                <span className="text-[10px] font-semibold text-emerald-600">Compliance</span>
               </div>
               <p className="text-base font-bold font-mono text-indigo-950">
                 {shop.fssaiRegistration || 'MISSING_KYC_DOC'}
               </p>
+            </div>
+
+            {/* B3: Submitted KYC Documents Section */}
+            <div className="pt-2 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-slate-700 text-xs uppercase tracking-wider">
+                  Submitted KYC Documents ({businessDocuments.length})
+                </span>
+              </div>
+
+              {businessDocuments.length === 0 ? (
+                <div className="p-4 rounded-xl border border-dashed border-slate-200 text-center text-slate-400">
+                  <p>No compliance documents uploaded yet.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {businessDocuments.map((doc: BusinessDocumentItem) => (
+                    <div
+                      key={doc.id}
+                      className="p-3 rounded-xl border border-slate-200 bg-white flex items-center justify-between gap-3 shadow-xs"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <FileCheck className="w-4 h-4 text-indigo-600 shrink-0" />
+                        <div className="truncate">
+                          <p className="font-bold text-slate-800 truncate">{doc.documentType}</p>
+                          <p className="text-[10px] text-slate-400">
+                            Uploaded: {new Date(doc.createdAt).toLocaleDateString('en-IN')}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          doc.status === 'VERIFIED'
+                            ? 'bg-emerald-50 text-emerald-700'
+                            : doc.status === 'REJECTED'
+                            ? 'bg-rose-50 text-rose-700'
+                            : 'bg-amber-50 text-amber-700'
+                        }`}>
+                          {doc.status}
+                        </span>
+
+                        {doc.fileUrl && (
+                          <a
+                            href={doc.fileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                            title="View Document"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* B3: Administrative KYC Actions (Approve / Reject) */}
+            <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center gap-3">
+              <Button
+                variant="primary"
+                size="sm"
+                disabled={isMutating || shop.verificationStatus === 'VERIFIED'}
+                onClick={() => handleVerificationReview('APPROVE')}
+                className="w-full sm:w-auto flex-1 bg-emerald-600 hover:bg-emerald-700 border-emerald-700 gap-1.5"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>{shop.verificationStatus === 'VERIFIED' ? 'Verified' : 'Approve KYC'}</span>
+              </Button>
+
+              <Button
+                variant="danger"
+                size="sm"
+                disabled={isMutating}
+                onClick={() => setIsRejectKycModalOpen(true)}
+                className="w-full sm:w-auto flex-1 gap-1.5"
+              >
+                <XCircle className="w-4 h-4" />
+                <span>Reject KYC</span>
+              </Button>
             </div>
           </div>
         </Card>
@@ -398,7 +587,7 @@ export default function AdminShopDetailPage() {
                         })}
                       </span>
                     </div>
-                    <p className="text-slate-600 text-[11px]">{log.details}</p>
+                    <p className="text-slate-600 text-[11px]">{log.details || log.metadata}</p>
                   </div>
                 ))}
               </div>
@@ -406,6 +595,128 @@ export default function AdminShopDetailPage() {
           </Card>
         </div>
       </div>
+
+      {/* B2: Suspension Confirmation Modal */}
+      <Modal
+        isOpen={isSuspendModalOpen}
+        onClose={() => {
+          setIsSuspendModalOpen(false);
+          setSuspensionReason('');
+          setSuspensionError(null);
+        }}
+        title="Suspend Bakery Storefront"
+        description="Immediately revoke public storefront access and suspend operational permissions."
+      >
+        <div className="space-y-4">
+          <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-start gap-2.5">
+            <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+            <p className="leading-relaxed">
+              <strong>Impact Notice:</strong> Suspending this shop will immediately hide its products from the marketplace, prevent customer checkout, and block the owner from kitchen operations.
+            </p>
+          </div>
+
+          <Textarea
+            label="Suspension Reason"
+            required
+            rows={4}
+            placeholder="e.g. Non-compliance with hygiene regulations or repeated order cancellations..."
+            value={suspensionReason}
+            onChange={(e) => {
+              setSuspensionReason(e.target.value);
+              if (suspensionError) setSuspensionError(null);
+            }}
+            error={suspensionError || undefined}
+            helperText="A mandatory, non-blank reason is required for administrative accountability."
+          />
+
+          <div className="flex items-center justify-end gap-3 pt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={isMutating}
+              onClick={() => {
+                setIsSuspendModalOpen(false);
+                setSuspensionReason('');
+                setSuspensionError(null);
+              }}
+            >
+              Cancel
+            </Button>
+
+            <Button
+              variant="danger"
+              size="sm"
+              disabled={!suspensionReason.trim() || isMutating}
+              isLoading={isMutating}
+              onClick={() => handleStatusUpdate('SUSPENDED', suspensionReason)}
+            >
+              <Ban className="w-4 h-4 mr-1.5" />
+              <span>Confirm Suspension</span>
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* B3: KYC Rejection Modal */}
+      <Modal
+        isOpen={isRejectKycModalOpen}
+        onClose={() => {
+          setIsRejectKycModalOpen(false);
+          setKycRejectionReason('');
+          setKycRejectionError(null);
+        }}
+        title="Reject KYC Compliance Documents"
+        description="Notify the bakery owner why their compliance dossier requires correction."
+      >
+        <div className="space-y-4">
+          <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-800 flex items-start gap-2.5">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <p className="leading-relaxed">
+              <strong>Owner Feedback:</strong> The reason you provide will be sent directly to the bakery owner via in-app notifications and displayed in their compliance settings.
+            </p>
+          </div>
+
+          <Textarea
+            label="Rejection Reason & Next Steps"
+            required
+            rows={4}
+            placeholder="e.g. Uploaded FSSAI certificate is expired or illegible. Please provide valid license matching registered address..."
+            value={kycRejectionReason}
+            onChange={(e) => {
+              setKycRejectionReason(e.target.value);
+              if (kycRejectionError) setKycRejectionError(null);
+            }}
+            error={kycRejectionError || undefined}
+            helperText="A clear, actionable explanation helps the baker resolve the issue quickly."
+          />
+
+          <div className="flex items-center justify-end gap-3 pt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={isMutating}
+              onClick={() => {
+                setIsRejectKycModalOpen(false);
+                setKycRejectionReason('');
+                setKycRejectionError(null);
+              }}
+            >
+              Cancel
+            </Button>
+
+            <Button
+              variant="danger"
+              size="sm"
+              disabled={!kycRejectionReason.trim() || isMutating}
+              isLoading={isMutating}
+              onClick={() => handleVerificationReview('REJECT', kycRejectionReason)}
+            >
+              <XCircle className="w-4 h-4 mr-1.5" />
+              <span>Reject Verification</span>
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

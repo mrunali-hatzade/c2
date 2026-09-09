@@ -2,6 +2,7 @@ export type OrderStatus =
   | 'PENDING'
   | 'CONFIRMED'
   | 'PREPARING'
+  | 'READY'
   | 'READY_FOR_PICKUP'
   | 'OUT_FOR_DELIVERY'
   | 'DELIVERED'
@@ -9,29 +10,44 @@ export type OrderStatus =
 
 export interface OrderItem {
   id?: number;
-  productId: number;
-  productName: string;
+  productId?: number;
+  productName?: string;
+  productNameSnapshot?: string;
   quantity: number;
   unitPrice: number;
+  totalPrice?: number;
+  variantName?: string;
+  dietaryPreference?: string;
+  cakeMessage?: string;
   customMessage?: string;
+  photoReferenceUrl?: string;
+  addonsSummary?: string;
 }
 
 export interface Order {
   id: number;
   orderNumber: string;
-  shopId: number;
-  customerName: string;
-  customerEmail: string;
-  customerPhone: string;
-  deliveryAddress: string;
-  deliveryDate: string;
+  shopId?: number;
+  customerName?: string;
+  customerEmail?: string;
+  customerPhone?: string;
+  deliveryAddress?: string;
+  deliveryDate?: string;
   deliverySlotId?: number;
+  subtotal?: number;
+  deliveryCharge?: number;
   totalAmount: number;
   discountAmount?: number;
   status: OrderStatus;
-  paymentStatus: 'PENDING' | 'PAID' | 'FAILED';
+  orderStatus?: string;
+  paymentStatus: 'PENDING' | 'PAID' | 'FAILED' | string;
+  paymentMethod?: string;
+  transactionId?: string;
+  paidAt?: string;
   createdAt: string;
-  items: OrderItem[];
+  updatedAt?: string;
+  couponCode?: string;
+  items?: OrderItem[];
 }
 
 export interface GuestOrderRequest {

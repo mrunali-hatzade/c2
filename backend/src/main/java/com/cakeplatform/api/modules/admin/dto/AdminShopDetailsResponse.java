@@ -14,6 +14,7 @@ public class AdminShopDetailsResponse {
     private List<Subscription> subscriptions;
     private List<Payment> payments;
     private List<ActivityLog> activityLogs;
+    private List<com.cakeplatform.api.modules.shop.BusinessDocument> businessDocuments;
     private long totalProducts;
     private long totalOrders;
 }

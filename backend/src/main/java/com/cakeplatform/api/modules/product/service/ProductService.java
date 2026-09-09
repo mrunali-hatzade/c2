@@ -16,6 +16,7 @@ import java.util.List;
 public class ProductService {
 
     private final ProductRepository productRepository;
+    private final com.cakeplatform.api.modules.product.ProductCategoryRepository categoryRepository;
     private final com.cakeplatform.api.modules.security.ShopAccessValidator shopAccessValidator;
     private final ActivityLoggerService activityLogger;
 
@@ -40,6 +41,14 @@ public class ProductService {
         product.setImageUrl(request.getImageUrl());
         product.setAvailability(request.getAvailability() != null ? request.getAvailability() : true);
         product.setStatus("ACTIVE");
+        
+        if (request.getCategoryId() != null) {
+            com.cakeplatform.api.modules.product.ProductCategory category = categoryRepository.findByIdAndShopId(request.getCategoryId(), shop.getId())
+                    .orElseThrow(() -> new IllegalArgumentException("Category not found or does not belong to your shop"));
+            product.setCategory(category);
+        } else {
+            product.setCategory(null);
+        }
         
         if (request.getVariants() != null) {
             for (ProductRequest.VariantDto vDto : request.getVariants()) {
@@ -82,6 +91,14 @@ public class ProductService {
         product.setImageUrl(request.getImageUrl());
         if (request.getAvailability() != null) {
             product.setAvailability(request.getAvailability());
+        }
+
+        if (request.getCategoryId() != null) {
+            com.cakeplatform.api.modules.product.ProductCategory category = categoryRepository.findByIdAndShopId(request.getCategoryId(), shop.getId())
+                    .orElseThrow(() -> new IllegalArgumentException("Category not found or does not belong to your shop"));
+            product.setCategory(category);
+        } else {
+            product.setCategory(null);
         }
 
         Product updated = productRepository.save(product);

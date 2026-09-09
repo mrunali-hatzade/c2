@@ -19,6 +19,8 @@ public class ProductRequest {
     
     private Boolean availability = true;
     
+    private Long categoryId;
+    
     private java.util.List<VariantDto> variants;
     private java.util.List<AddonDto> addons;
 
