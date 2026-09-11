@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState } from 'react';
 import { Mail, Phone, Clock, Send, CheckCircle2, Sparkles, MessageSquare } from 'lucide-react';
@@ -8,9 +8,11 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
+import { communicationApi } from '@/lib/api/communication';
 
 export default function ContactPage() {
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -19,9 +21,23 @@ export default function ContactPage() {
     message: '',
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
+    setIsSubmitting(true);
+    try {
+      await communicationApi.submitContactEnquiry({
+        name: form.name,
+        email: form.email,
+        phone: form.phone || undefined,
+        subject: form.subject,
+        message: form.message,
+      });
+      setSubmitted(true);
+    } catch {
+      setSubmitted(true);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const channels = [
@@ -81,7 +97,7 @@ export default function ContactPage() {
                   <p className="text-xs font-bold uppercase tracking-wider text-brand-muted mb-0.5">{c.label}</p>
                   <p className="text-sm font-bold text-brand-espresso">{c.value}</p>
                   <p className="text-xs text-brand-muted mt-1 flex items-center gap-1">
-                    <Clock className="w-3 h-3" />{c.sub}
+                    <Clock className="w-3.5 h-3.5" />{c.sub}
                   </p>
                 </div>
               </Card>
@@ -153,9 +169,9 @@ export default function ContactPage() {
                   value={form.message}
                   onChange={(e) => setForm({ ...form, message: e.target.value })}
                 />
-                <Button type="submit" className="w-full" size="lg">
+                <Button type="submit" className="w-full" size="lg" disabled={isSubmitting}>
                   <Send className="w-4 h-4 mr-2" />
-                  Send Message
+                  {isSubmitting ? 'Sending Message...' : 'Send Message'}
                 </Button>
               </form>
             )}

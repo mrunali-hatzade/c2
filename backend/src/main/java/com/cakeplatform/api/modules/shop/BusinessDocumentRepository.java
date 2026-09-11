@@ -8,4 +8,5 @@ import java.util.List;
 @Repository
 public interface BusinessDocumentRepository extends JpaRepository<BusinessDocument, Long> {
     List<BusinessDocument> findByShopId(Long shopId);
+    void deleteByShopId(Long shopId);
 }

@@ -14,6 +14,13 @@ export interface CartItem {
   shopName: string;
 }
 
+export interface AppliedCouponInfo {
+  code: string;
+  discountType: 'PERCENTAGE' | 'FLAT';
+  discountValue: number;
+  discountAmount: number;
+}
+
 interface CartContextType {
   items: CartItem[];
   addItem: (item: CartItem) => { success: boolean; conflict?: boolean };
@@ -26,8 +33,8 @@ interface CartContextType {
   currentShopName: string | null;
   isCartOpen: boolean;
   setIsCartOpen: (open: boolean) => void;
-  isCheckoutOpen: boolean;
-  setIsCheckoutOpen: (open: boolean) => void;
+  appliedCoupon: AppliedCouponInfo | null;
+  setAppliedCoupon: (coupon: AppliedCouponInfo | null) => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -35,7 +42,7 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [items, setItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [appliedCoupon, setAppliedCoupon] = useState<AppliedCouponInfo | null>(null);
 
   // Load from localStorage
   useEffect(() => {
@@ -99,6 +106,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const clearCart = () => {
     setItems([]);
+    setAppliedCoupon(null);
   };
 
   const totalPrice = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -118,8 +126,8 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         currentShopName,
         isCartOpen,
         setIsCartOpen,
-        isCheckoutOpen,
-        setIsCheckoutOpen,
+        appliedCoupon,
+        setAppliedCoupon,
       }}
     >
       {children}

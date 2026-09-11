@@ -10,4 +10,5 @@ import java.util.Optional;
 public interface CustomCakeRequestRepository extends JpaRepository<CustomCakeRequest, Long> {
     List<CustomCakeRequest> findByShopIdOrderByCreatedAtDesc(Long shopId);
     Optional<CustomCakeRequest> findByIdAndShopId(Long id, Long shopId);
+    void deleteByShopId(Long shopId);
 }

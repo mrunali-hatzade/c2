@@ -133,7 +133,8 @@ public class StageASecurityAndBusinessRulesTest {
                 shopRepository,
                 shopStatusManager,
                 activityLogger,
-                notificationService
+                notificationService,
+                mock(com.cakeplatform.api.modules.notification.AdminNotificationService.class)
         );
 
         when(subscriptionRepository.findById(100L)).thenReturn(Optional.of(testSubscription));

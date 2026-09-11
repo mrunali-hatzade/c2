@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
@@ -8,6 +8,7 @@ import { Navbar } from '@/components/common/Navbar';
 import { Footer } from '@/components/common/Footer';
 import { HeroSection } from '@/components/customer/marketplace/HeroSection';
 import { BakeryGrid } from '@/components/customer/marketplace/BakeryGrid';
+import { BespokeCakeBridge } from '@/components/customer/marketplace/BespokeCakeBridge';
 import { TrustBadges } from '@/components/customer/marketplace/TrustBadges';
 import { OwnerCTA } from '@/components/customer/marketplace/OwnerCTA';
 import { CategoryOption } from '@/components/customer/marketplace/CategoryPills';
@@ -136,6 +137,9 @@ export default function HomePage() {
               : 'Direct ordering from verified kitchens with dedicated in-store fulfillment across Indian cities'
           }
         />
+
+        {/* Bespoke Custom Cake Studio Bridge */}
+        <BespokeCakeBridge />
 
         {/* Trust & Food Safety Guarantees */}
         <TrustBadges />

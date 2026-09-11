@@ -7,6 +7,9 @@ export interface DeliverySlot {
   endTime: string;   // HH:mm or HH:mm:ss
   maxOrders: number;
   maxOrdersPerDay?: number;
+  bookedOrders?: number;
+  remainingCapacity?: number;
+  available?: boolean;
   isActive: boolean;
 }
 

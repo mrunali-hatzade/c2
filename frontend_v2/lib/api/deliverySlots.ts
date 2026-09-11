@@ -2,8 +2,9 @@ import { apiClient } from './client';
 import { DeliverySlot, CreateDeliverySlotRequest } from '@/types/deliverySlot';
 
 export const deliverySlotsApi = {
-  getStorefrontSlots: async (shopId: number | string): Promise<DeliverySlot[]> => {
-    return apiClient.get<DeliverySlot[]>(`/api/storefront/shops/${shopId}/delivery-slots`);
+  getStorefrontSlots: async (shopId: number | string, date?: string): Promise<DeliverySlot[]> => {
+    const query = date ? `?date=${encodeURIComponent(date)}` : '';
+    return apiClient.get<DeliverySlot[]>(`/api/storefront/shops/${shopId}/delivery-slots${query}`);
   },
 
   getOwnerSlots: async (): Promise<DeliverySlot[]> => {

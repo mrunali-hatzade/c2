@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState } from 'react';
 import Link from 'next/link';
@@ -9,6 +9,18 @@ import { Footer } from '@/components/common/Footer';
 export default function PricingPage() {
   const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly');
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [activePlan, setActivePlan] = useState<{ id: number; name: string; price: number } | null>(null);
+
+  React.useEffect(() => {
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/storefront/plans`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setActivePlan(data[0]);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const features = [
     'Custom branded online bakery storefront',
@@ -42,9 +54,12 @@ export default function PricingPage() {
     },
   ];
 
-  const monthlyPrice = 350;
-  const yearlyPricePerMonth = 292;
+  const monthlyPrice = activePlan ? activePlan.price : 999;
+  const yearlyPricePerMonth = Math.round((monthlyPrice * 10) / 12);
+  const yearlyTotal = monthlyPrice * 10;
+  const yearlySavings = (monthlyPrice * 12) - yearlyTotal;
   const currentPrice = billing === 'monthly' ? monthlyPrice : yearlyPricePerMonth;
+  const planName = activePlan?.name || 'Pro Baker Plan';
 
   return (
     <div className="min-h-screen bg-brand-cream-light font-sans flex flex-col">
@@ -90,16 +105,18 @@ export default function PricingPage() {
           <div className="bg-white rounded-3xl border-2 border-brand-plum shadow-lg p-8 sm:p-10">
             <div className="flex items-start justify-between mb-6">
               <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-brand-plum">All-in-One Baker Plan</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-brand-plum">{planName}</span>
                 <h2 className="text-2xl font-bold font-serif text-brand-espresso mt-1">Complete Bakery Suite</h2>
               </div>
               <div className="text-right">
                 <div className="text-4xl font-extrabold font-serif text-brand-espresso">
-                  <span className="text-lg font-bold">₹</span>{currentPrice}
+                  <span className="text-lg font-bold">₹</span>{currentPrice.toLocaleString('en-IN')}
                 </div>
                 <div className="text-xs text-brand-muted">/month{billing === 'yearly' ? ', billed yearly' : ''}</div>
                 {billing === 'yearly' && (
-                  <div className="text-xs text-emerald-600 font-semibold mt-0.5">₹3,500/year (save ₹700)</div>
+                  <div className="text-xs text-emerald-600 font-semibold mt-0.5">
+                    ₹{yearlyTotal.toLocaleString('en-IN')}/year (save ₹{yearlySavings.toLocaleString('en-IN')})
+                  </div>
                 )}
               </div>
             </div>

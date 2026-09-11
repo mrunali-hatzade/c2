@@ -8,4 +8,5 @@ import java.util.Optional;
 @Repository
 public interface ShopPayoutDetailsRepository extends JpaRepository<ShopPayoutDetails, Long> {
     Optional<ShopPayoutDetails> findByShopId(Long shopId);
+    void deleteByShopId(Long shopId);
 }

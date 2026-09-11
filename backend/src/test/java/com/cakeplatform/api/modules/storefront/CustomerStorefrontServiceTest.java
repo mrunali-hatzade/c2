@@ -47,6 +47,9 @@ public class CustomerStorefrontServiceTest {
     @Mock
     private NotificationService notificationService;
 
+    @Mock
+    private com.cakeplatform.api.modules.shop.ShopDeliverySlotRepository deliverySlotRepository;
+
     @InjectMocks
     private CustomerStorefrontService storefrontService;
 

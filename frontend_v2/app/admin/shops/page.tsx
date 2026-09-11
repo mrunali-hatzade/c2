@@ -49,7 +49,7 @@ export default function AdminShopsPage() {
       setIsLoading(false);
       setRefreshing(false);
     }
-  }, [toast]);
+  }, []);
 
   useEffect(() => {
     fetchShops();
@@ -98,8 +98,15 @@ export default function AdminShopsPage() {
 
   const getStatusBadge = (status: string) => {
     const s = status.toUpperCase();
-    if (s === 'ACTIVE') return <Badge variant="success" size="sm">Active</Badge>;
-    if (s === 'PENDING' || s === 'PENDING_APPROVAL') return <Badge variant="warning" size="sm">Pending KYC</Badge>;
+    if (s === 'ACTIVE') {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          ACTIVE • STORE LIVE
+        </span>
+      );
+    }
+    if (s === 'PENDING' || s === 'PENDING_APPROVAL') return <Badge variant="warning" size="sm">Pending Approval</Badge>;
     if (s === 'SUSPENDED') return <Badge variant="error" size="sm">Suspended</Badge>;
     if (s === 'REJECTED') return <Badge variant="default" size="sm">Rejected</Badge>;
     return <Badge variant="default" size="sm">{status}</Badge>;
@@ -153,7 +160,7 @@ export default function AdminShopsPage() {
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <span>Pending KYC</span>
+            <span>Pending Approval</span>
             {counts.pending > 0 && (
               <span className="w-5 h-5 rounded-full bg-amber-500 text-white text-[10px] flex items-center justify-center font-bold">
                 {counts.pending}
@@ -270,9 +277,15 @@ export default function AdminShopsPage() {
                       {/* Action Buttons */}
                       <td className="py-4 px-5 text-right">
                         <div className="flex items-center justify-end gap-2">
+                          <Link href={`/shop/${shop.shopId}`} target="_blank" rel="noopener noreferrer">
+                            <Button variant="ghost" size="sm" className="text-xs text-indigo-600 hover:text-indigo-800 gap-1">
+                              <Store className="w-3.5 h-3.5" />
+                              <span>View Storefront</span>
+                            </Button>
+                          </Link>
                           <Link href={`/admin/shops/${shop.shopId}`}>
                             <Button variant="outline" size="sm" className="text-xs">
-                              Dossier
+                              Manage
                             </Button>
                           </Link>
 

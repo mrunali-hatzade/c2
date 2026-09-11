@@ -27,6 +27,7 @@ public class CustomerPaymentController {
     private final PaymentRepository paymentRepository;
     private final RazorpayService razorpayService;
     private final NotificationService notificationService;
+    private final com.cakeplatform.api.modules.notification.AdminNotificationService adminNotificationService;
 
     /**
      * C1: Create / initialize a Razorpay payment order for a customer order.
@@ -133,11 +134,27 @@ public class CustomerPaymentController {
             );
         }
 
+        // Dispatch Admin Notification (PAYMENT_RECEIVED - idempotent by payment ID)
+        try {
+            adminNotificationService.dispatchAdminNotification(
+                    com.cakeplatform.api.modules.notification.AdminNotificationType.PAYMENT_RECEIVED,
+                    "Payment Received: ₹" + order.getTotalAmount(),
+                    String.format("Payment of ₹%s received for order %s (%s).",
+                            order.getTotalAmount(), order.getOrderNumber(),
+                            order.getShop() != null ? order.getShop().getBusinessName() : "Bakery"),
+                    com.cakeplatform.api.modules.notification.AdminNotificationPriority.NORMAL,
+                    com.cakeplatform.api.modules.notification.AdminNotificationCategory.PAYMENTS,
+                    razorpayPaymentId,
+                    "PAYMENT",
+                    order.getShop() != null ? "/admin/shops/" + order.getShop().getId() : "/admin/shops"
+            );
+        } catch (Exception ignored) {}
+
         return ResponseEntity.ok(Map.of(
                 "status", "SUCCESS",
                 "message", "Payment verified and order confirmed",
                 "orderNumber", order.getOrderNumber(),
-                "paymentId", payment.getId()
+                "paymentId", payment.getId() != null ? payment.getId() : 0L
         ));
     }
 }

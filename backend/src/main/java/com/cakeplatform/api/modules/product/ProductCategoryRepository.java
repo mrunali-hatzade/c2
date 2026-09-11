@@ -38,4 +38,6 @@ public interface ProductCategoryRepository extends JpaRepository<ProductCategory
 
     @Query("SELECT COUNT(c) > 0 FROM ProductCategory c WHERE c.shop.id = :shopId AND LOWER(TRIM(c.name)) = LOWER(TRIM(:name)) AND c.id != :excludeId")
     boolean existsByShopIdAndLowerTrimmedNameExcludingId(@Param("shopId") Long shopId, @Param("name") String name, @Param("excludeId") Long excludeId);
+
+    void deleteByShopId(Long shopId);
 }

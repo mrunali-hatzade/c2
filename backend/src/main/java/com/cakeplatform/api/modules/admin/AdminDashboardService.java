@@ -162,6 +162,35 @@ public class AdminDashboardService {
         details.setTotalProducts(productRepository.countByShopId(shopId));
         details.setTotalOrders(orderRepository.countByShopId(shopId));
 
+        ZoneId zone = getOperationalZone();
+        LocalDate today = LocalDate.now(zone);
+        LocalDateTime startOfMonth = today.withDayOfMonth(1).atStartOfDay();
+        LocalDateTime startOfWeek = today.minusDays(today.getDayOfWeek().getValue() - 1).atStartOfDay();
+
+        BigDecimal totalRev = orderRepository.sumRevenueByShopId(shopId);
+        details.setTotalRevenue(totalRev != null ? totalRev : BigDecimal.ZERO);
+
+        List<com.cakeplatform.api.modules.order.Order> recentOrders = orderRepository.findRecentRealizedOrders(shopId, startOfMonth);
+        BigDecimal monthlyRev = BigDecimal.ZERO;
+        BigDecimal weeklyRev = BigDecimal.ZERO;
+        if (recentOrders != null) {
+            for (com.cakeplatform.api.modules.order.Order o : recentOrders) {
+                if (o.getTotalAmount() != null) {
+                    monthlyRev = monthlyRev.add(o.getTotalAmount());
+                    if (o.getCreatedAt() != null && !o.getCreatedAt().isBefore(startOfWeek)) {
+                        weeklyRev = weeklyRev.add(o.getTotalAmount());
+                    }
+                }
+            }
+        }
+        details.setMonthlyRevenue(monthlyRev);
+        details.setWeeklyRevenue(weeklyRev);
+
+        long completed = orderRepository.countByShopIdAndOrderStatus(shopId, "COMPLETED")
+                + orderRepository.countByShopIdAndOrderStatus(shopId, "DELIVERED");
+        details.setCompletedOrders(completed);
+        details.setCancelledOrders(orderRepository.countByShopIdAndOrderStatus(shopId, "CANCELLED"));
+
         return details;
     }
 

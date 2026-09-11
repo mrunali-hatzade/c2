@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
+  MessageCircle,
+  Mail,
   Store,
   Users,
   TrendingUp,
@@ -17,6 +19,7 @@ import {
 } from 'lucide-react';
 import { getPlatformStats, getAllShops } from '@/lib/api/admin';
 import { DashboardStats, AdminShopSummary } from '@/types/admin';
+import { communicationApi } from '@/lib/api/communication';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -39,6 +42,8 @@ export default function AdminOverviewPage() {
       ]);
       setStats(statsData);
       setRecentShops(shopsData.slice(0, 5));
+    } catch (err: any) {
+      console.warn('Failed to load admin stats:', err);
     } finally {
       setIsLoading(false);
       setRefreshing(false);
@@ -59,8 +64,15 @@ export default function AdminOverviewPage() {
 
   const getStatusBadge = (status: string) => {
     const s = status.toUpperCase();
-    if (s === 'ACTIVE') return <Badge variant="success" size="sm">Active</Badge>;
-    if (s === 'PENDING' || s === 'PENDING_APPROVAL') return <Badge variant="warning" size="sm">Pending KYC</Badge>;
+    if (s === 'ACTIVE') {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          ACTIVE • STORE LIVE
+        </span>
+      );
+    }
+    if (s === 'PENDING' || s === 'PENDING_APPROVAL') return <Badge variant="warning" size="sm">Pending Approval</Badge>;
     if (s === 'SUSPENDED') return <Badge variant="error" size="sm">Suspended</Badge>;
     return <Badge variant="default" size="sm">{status}</Badge>;
   };
@@ -89,7 +101,7 @@ export default function AdminOverviewPage() {
         </Button>
       </div>
 
-      {/* Pending KYC Action Alert Banner */}
+      {/* Pending Approval Action Alert Banner */}
       {(stats?.pendingShops ?? 0) > 0 && (
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-soft">
           <div className="flex items-center gap-3">
@@ -101,13 +113,13 @@ export default function AdminOverviewPage() {
                 {stats?.pendingShops} {stats?.pendingShops === 1 ? 'Bakery' : 'Bakeries'} Awaiting Verification
               </h3>
               <p className="text-xs text-amber-700 mt-0.5">
-                New tenant onboarding dossiers with FSSAI & KYC documentation require administrative compliance approval.
+                New bakery registrations require administrative verification and compliance review.
               </p>
             </div>
           </div>
           <Link href="/admin/shops">
             <Button variant="primary" size="sm" className="whitespace-nowrap bg-amber-600 hover:bg-amber-700 border-amber-700">
-              Review Dossiers
+              Review Applications
             </Button>
           </Link>
         </div>
@@ -258,6 +270,46 @@ export default function AdminOverviewPage() {
         </Link>
       </div>
 
+      
+      {/* Secondary Operational Communication Widgets */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <Card className="p-5 border-slate-200/90 bg-gradient-to-br from-white to-indigo-50/20 shadow-xs flex items-center justify-between">
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+              <MessageCircle className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-sm font-bold text-slate-900">Platform Feedback</h4>
+              <p className="text-xs text-slate-500">Suggestions & reviews from bakery owners</p>
+            </div>
+          </div>
+          <Link href="/admin/feedback">
+            <Button variant="outline" size="sm" className="text-xs gap-1 border-indigo-200 text-indigo-700 hover:bg-indigo-50">
+              <span>View Feedback</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Button>
+          </Link>
+        </Card>
+
+        <Card className="p-5 border-slate-200/90 bg-gradient-to-br from-white to-blue-50/20 shadow-xs flex items-center justify-between">
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+              <Mail className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-sm font-bold text-slate-900">Contact Enquiries</h4>
+              <p className="text-xs text-slate-500">Visitor messages from public Contact Us page</p>
+            </div>
+          </div>
+          <Link href="/admin/enquiries">
+            <Button variant="outline" size="sm" className="text-xs gap-1 border-blue-200 text-blue-700 hover:bg-blue-50">
+              <span>View Enquiries</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Button>
+          </Link>
+        </Card>
+      </div>
+
       {/* Recent Bakery Registrations Table */}
       <Card className="p-6 border-slate-200/80 shadow-soft">
         <div className="flex items-center justify-between mb-5">
@@ -319,11 +371,19 @@ export default function AdminOverviewPage() {
                     {getStatusBadge(shop.shopStatus)}
                   </td>
                   <td className="py-3.5 px-4 text-right">
-                    <Link href={`/admin/shops/${shop.shopId}`}>
-                      <Button variant="ghost" size="sm" className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50">
-                        Inspect Dossier
-                      </Button>
-                    </Link>
+                    <div className="flex items-center justify-end gap-2">
+                      <Link href={`/shop/${shop.shopId}`} target="_blank" rel="noopener noreferrer">
+                        <Button variant="ghost" size="sm" className="text-xs text-slate-500 hover:text-indigo-600 gap-1">
+                          <Store className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">Storefront</span>
+                        </Button>
+                      </Link>
+                      <Link href={`/admin/shops/${shop.shopId}`}>
+                        <Button variant="ghost" size="sm" className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 font-semibold text-xs">
+                          Manage
+                        </Button>
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               ))}

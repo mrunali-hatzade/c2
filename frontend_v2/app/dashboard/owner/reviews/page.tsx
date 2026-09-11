@@ -1,4 +1,5 @@
 'use client';
+/* eslint-disable @next/next/no-img-element */
 
 import React, { useEffect, useState, useMemo } from 'react';
 import {
@@ -14,9 +15,10 @@ import {
   Sparkles,
   ShoppingBag,
   MessageCircle,
+  ShieldCheck,
+  Cake,
 } from 'lucide-react';
-import { ownerApi } from '@/lib/api/owner';
-import { FeedbackRecord } from '@/types/owner';
+import { reviewsApi, OwnerProductReview } from '@/lib/api/reviews';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -25,8 +27,10 @@ import { Textarea } from '@/components/ui/Textarea';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { EmptyState } from '@/components/ui/EmptyState';
 
+const FALLBACK_CAKE = 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=400&q=80';
+
 export default function OwnerReviewsPage() {
-  const [reviews, setReviews] = useState<FeedbackRecord[]>([]);
+  const [reviews, setReviews] = useState<OwnerProductReview[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,15 +40,11 @@ export default function OwnerReviewsPage() {
   const [searchQuery, setSearchQuery] = useState('');
 
   // Reply Modal State
-  const [selectedReview, setSelectedReview] = useState<FeedbackRecord | null>(null);
+  const [selectedReview, setSelectedReview] = useState<OwnerProductReview | null>(null);
   const [replyText, setReplyText] = useState('');
   const [submittingReply, setSubmittingReply] = useState(false);
   const [replySuccess, setReplySuccess] = useState<string | null>(null);
   const [replyError, setReplyError] = useState<string | null>(null);
-
-  // Delete Dialog State
-  const [reviewToDelete, setReviewToDelete] = useState<FeedbackRecord | null>(null);
-  const [deleting, setDeleting] = useState(false);
 
   const fetchReviews = async (isManual = false) => {
     if (isManual) setRefreshing(true);
@@ -52,7 +52,7 @@ export default function OwnerReviewsPage() {
     setError(null);
 
     try {
-      const data = await ownerApi.getOwnerFeedback();
+      const data = await reviewsApi.getOwnerProductReviews();
       setReviews(data || []);
     } catch (err: any) {
       setError(err?.message || 'Failed to load reviews');
@@ -73,9 +73,10 @@ export default function OwnerReviewsPage() {
       const q = searchQuery.toLowerCase().trim();
       const matchesSearch =
         !q ||
-        (r.customerDisplayName && r.customerDisplayName.toLowerCase().includes(q)) ||
-        (r.comment && r.comment.toLowerCase().includes(q)) ||
-        (r.orderReference && r.orderReference.toLowerCase().includes(q));
+        (r.customerName && r.customerName.toLowerCase().includes(q)) ||
+        (r.productName && r.productName.toLowerCase().includes(q)) ||
+        (r.reviewText && r.reviewText.toLowerCase().includes(q)) ||
+        (r.orderNumber && r.orderNumber.toLowerCase().includes(q));
       return matchesRating && matchesSearch;
     });
   }, [reviews, ratingFilter, searchQuery]);
@@ -91,7 +92,7 @@ export default function OwnerReviewsPage() {
   const responseRate =
     totalReviewsCount > 0 ? Math.round((respondedCount / totalReviewsCount) * 100) : 0;
 
-  const handleOpenReplyModal = (review: FeedbackRecord) => {
+  const handleOpenReplyModal = (review: OwnerProductReview) => {
     setSelectedReview(review);
     setReplyText(review.ownerReply || '');
     setReplySuccess(null);
@@ -107,7 +108,7 @@ export default function OwnerReviewsPage() {
     setReplySuccess(null);
 
     try {
-      const updated = await ownerApi.replyToFeedback(selectedReview.id, replyText);
+      const updated = await reviewsApi.replyToProductReview(selectedReview.id, replyText.trim());
       setReviews((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
       setSelectedReview(updated);
       setReplySuccess('Bakery response published on public storefront!');
@@ -118,21 +119,6 @@ export default function OwnerReviewsPage() {
       setReplyError(err?.message || 'Failed to post reply');
     } finally {
       setSubmittingReply(false);
-    }
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!reviewToDelete) return;
-    setDeleting(true);
-
-    try {
-      await ownerApi.deleteFeedback(reviewToDelete.id);
-      setReviews((prev) => prev.filter((r) => r.id !== reviewToDelete.id));
-      setReviewToDelete(null);
-    } catch (err: any) {
-      alert(err?.message || 'Failed to delete review');
-    } finally {
-      setDeleting(false);
     }
   };
 
@@ -166,7 +152,7 @@ export default function OwnerReviewsPage() {
             Customer Feedback & Reviews
           </h1>
           <p className="text-xs text-owner-muted">
-            Track customer ratings, manage public testimonials, and reply to cake reviews across the marketplace
+            Track customer ratings, manage verified product reviews, and reply directly from your bakery dashboard
           </p>
         </div>
 
@@ -271,7 +257,7 @@ export default function OwnerReviewsPage() {
           <Search className="w-3.5 h-3.5 text-owner-muted absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Search reviews by customer, order #..."
+            placeholder="Search by customer, cake, order #..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9 pr-4 py-2 rounded-xl border border-owner-border text-xs text-owner-heading bg-white focus:outline-none focus:ring-2 focus:ring-brand-plum/20 w-64"
@@ -287,7 +273,7 @@ export default function OwnerReviewsPage() {
           description={
             searchQuery || ratingFilter !== 'ALL'
               ? 'No customer reviews match your active filter.'
-              : 'Verified customer reviews from completed orders will appear here.'
+              : 'Verified customer reviews from delivered celebration orders will appear here automatically.'
           }
         />
       ) : (
@@ -295,18 +281,29 @@ export default function OwnerReviewsPage() {
           {filteredReviews.map((review) => (
             <Card key={review.id} className="p-5 sm:p-6 hover:shadow-card transition-all">
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 pb-4 border-b border-owner-border/70">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-brand-blush text-brand-plum flex items-center justify-center font-serif font-bold text-base shrink-0">
-                    {review.customerDisplayName?.charAt(0).toUpperCase() || 'C'}
+                <div className="flex items-start gap-3.5">
+                  <div className="w-12 h-12 rounded-2xl overflow-hidden bg-brand-cream border border-owner-border/80 shrink-0">
+                    <img
+                      src={review.productImage || FALLBACK_CAKE}
+                      alt={review.productName}
+                      className="w-full h-full object-cover"
+                    />
                   </div>
                   <div>
                     <div className="flex items-center gap-2.5">
                       <h3 className="font-bold text-sm text-owner-heading">
-                        {review.customerDisplayName || 'Customer'}
+                        {review.productName || 'Artisan Cake'}
                       </h3>
                       {renderStars(review.rating)}
                     </div>
-                    <div className="flex items-center gap-3 text-xs text-owner-muted mt-0.5">
+                    <div className="flex flex-wrap items-center gap-2.5 text-xs text-owner-muted mt-1">
+                      <span className="font-medium text-owner-heading">{review.customerName}</span>
+                      <span>•</span>
+                      <span className="flex items-center gap-1 font-mono text-[11px] bg-brand-cream px-2 py-0.5 rounded-md text-brand-plum">
+                        <ShoppingBag className="w-3 h-3 text-brand-plum" />
+                        #{review.orderNumber}
+                      </span>
+                      <span>•</span>
                       <span className="flex items-center gap-1">
                         <Clock className="w-3 h-3 text-brand-plum" />
                         {new Date(review.createdAt).toLocaleDateString('en-IN', {
@@ -315,10 +312,10 @@ export default function OwnerReviewsPage() {
                           year: 'numeric',
                         })}
                       </span>
-                      {review.orderReference && (
-                        <span className="flex items-center gap-1 font-mono text-[11px] bg-brand-cream px-2 py-0.5 rounded-md">
-                          <ShoppingBag className="w-3 h-3 text-owner-muted" />
-                          {review.orderReference}
+                      {review.isVerifiedPurchase && (
+                        <span className="inline-flex items-center gap-0.5 text-[10px] text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                          <ShieldCheck className="w-3 h-3" />
+                          <span>Verified Purchase</span>
                         </span>
                       )}
                     </div>
@@ -329,25 +326,22 @@ export default function OwnerReviewsPage() {
                   <Button
                     onClick={() => handleOpenReplyModal(review)}
                     size="sm"
-                    variant="outline"
+                    variant={review.ownerReply ? 'outline' : 'primary'}
                     className="text-xs"
                   >
-                    {review.ownerReply ? 'Edit Reply' : 'Reply'}
+                    {review.ownerReply ? 'Edit Bakery Reply' : 'Reply to Customer'}
                   </Button>
-                  <button
-                    onClick={() => setReviewToDelete(review)}
-                    className="p-2 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
-                    title="Delete Review"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
                 </div>
               </div>
 
               {/* Review Comment */}
               <div className="pt-4 space-y-3">
                 <p className="text-xs text-owner-heading leading-relaxed font-medium">
-                  {review.comment ? `“${review.comment}”` : <span className="italic text-owner-muted">Rating submitted without text comment.</span>}
+                  {review.reviewText ? (
+                    `“${review.reviewText}”`
+                  ) : (
+                    <span className="italic text-owner-muted">Rating submitted without text comment.</span>
+                  )}
                 </p>
 
                 {/* Owner Reply Box */}
@@ -355,7 +349,7 @@ export default function OwnerReviewsPage() {
                   <div className="p-3.5 rounded-2xl bg-brand-blush/40 border border-brand-blush-border text-xs space-y-1">
                     <p className="font-bold text-brand-plum text-[11px] uppercase tracking-wider flex items-center gap-1">
                       <Sparkles className="w-3 h-3" />
-                      Bakery Response
+                      Official Bakery Response {review.ownerRepliedAt ? `• ${new Date(review.ownerRepliedAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}` : ''}
                     </p>
                     <p className="text-owner-heading leading-relaxed">{review.ownerReply}</p>
                   </div>
@@ -370,22 +364,25 @@ export default function OwnerReviewsPage() {
       <Modal
         isOpen={!!selectedReview}
         onClose={() => setSelectedReview(null)}
-        title={`Reply to ${selectedReview?.customerDisplayName}`}
+        title={`Reply to ${selectedReview?.customerName}`}
       >
         {selectedReview && (
           <form onSubmit={handleSubmitReply} className="space-y-4">
             <div className="p-3.5 rounded-2xl bg-owner-canvas border border-owner-border text-xs space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="font-bold text-owner-heading">{selectedReview.customerDisplayName}</span>
+                <div>
+                  <span className="font-bold text-owner-heading">{selectedReview.customerName}</span>
+                  <span className="text-owner-muted ml-1.5 font-normal">on {selectedReview.productName}</span>
+                </div>
                 {renderStars(selectedReview.rating)}
               </div>
               <p className="text-owner-muted leading-relaxed italic">
-                “{selectedReview.comment || '5-Star rating'}”
+                “{selectedReview.reviewText || `${selectedReview.rating}-Star rating`}”
               </p>
             </div>
 
             <Textarea
-              label="Official Bakery Response (Visible to Public Storefront)"
+              label="Official Bakery Response (Visible on Public Storefront)"
               rows={4}
               placeholder="Thank the customer for their review and celebration..."
               value={replyText}
@@ -417,37 +414,7 @@ export default function OwnerReviewsPage() {
           </form>
         )}
       </Modal>
-
-      {/* Delete Confirmation Modal */}
-      <Modal
-        isOpen={!!reviewToDelete}
-        onClose={() => setReviewToDelete(null)}
-        title="Delete Customer Review"
-      >
-        <div className="space-y-4">
-          <p className="text-xs text-owner-muted leading-relaxed">
-            Are you sure you want to remove this review by{' '}
-            <strong className="text-owner-heading">{reviewToDelete?.customerDisplayName}</strong>?
-            This will hide the rating from your storefront analytics and public page.
-          </p>
-
-          <div className="flex items-center justify-end gap-2.5 pt-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => setReviewToDelete(null)}>
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="danger"
-              isLoading={deleting}
-              onClick={handleConfirmDelete}
-            >
-              <Trash2 className="w-3.5 h-3.5 mr-1.5" />
-              Delete Review
-            </Button>
-          </div>
-        </div>
-      </Modal>
     </div>
   );
 }
+

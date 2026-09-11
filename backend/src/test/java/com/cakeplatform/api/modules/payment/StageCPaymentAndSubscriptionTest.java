@@ -67,6 +67,8 @@ public class StageCPaymentAndSubscriptionTest {
     private NotificationService notificationService;
     @Mock
     private ActivityLoggerService activityLogger;
+    @Mock
+    private com.cakeplatform.api.modules.notification.AdminNotificationService adminNotificationService;
 
     private WebhookController webhookController;
 
@@ -99,6 +101,7 @@ public class StageCPaymentAndSubscriptionTest {
                 shopRepository,
                 razorpayService,
                 notificationService,
+                adminNotificationService,
                 activityLogger
         );
 
@@ -115,7 +118,8 @@ public class StageCPaymentAndSubscriptionTest {
                 orderRepository,
                 paymentRepository,
                 razorpayService,
-                notificationService
+                notificationService,
+                adminNotificationService
         );
 
         testOwner = new User();
@@ -476,7 +480,7 @@ public class StageCPaymentAndSubscriptionTest {
         NotificationService nService = mock(NotificationService.class);
 
         SubscriptionService subService = new SubscriptionService(
-                subRepo, pRepo, sRepo, ssMgr, aLogger, nService
+                subRepo, pRepo, sRepo, ssMgr, aLogger, nService, adminNotificationService
         );
 
         Shop inactiveShop = new Shop();
@@ -515,7 +519,7 @@ public class StageCPaymentAndSubscriptionTest {
         NotificationService nService = mock(NotificationService.class);
 
         SubscriptionService subService = new SubscriptionService(
-                subRepo, pRepo, sRepo, ssMgr, aLogger, nService
+                subRepo, pRepo, sRepo, ssMgr, aLogger, nService, adminNotificationService
         );
 
         Shop suspendedShop = new Shop();
@@ -556,7 +560,7 @@ public class StageCPaymentAndSubscriptionTest {
         NotificationService nService = mock(NotificationService.class);
 
         SubscriptionService subService = new SubscriptionService(
-                subRepo, pRepo, sRepo, ssMgr, aLogger, nService
+                subRepo, pRepo, sRepo, ssMgr, aLogger, nService, adminNotificationService
         );
 
         Shop unverifiedShop = new Shop();

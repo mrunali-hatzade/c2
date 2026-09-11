@@ -15,7 +15,12 @@ import com.cakeplatform.api.security.JwtService;
 import com.cakeplatform.api.modules.media.MediaUploadService;
 import com.cakeplatform.api.modules.shop.BusinessDocument;
 import com.cakeplatform.api.modules.shop.BusinessDocumentRepository;
+import com.cakeplatform.api.modules.notification.AdminNotificationCategory;
+import com.cakeplatform.api.modules.notification.AdminNotificationPriority;
+import com.cakeplatform.api.modules.notification.AdminNotificationService;
+import com.cakeplatform.api.modules.notification.AdminNotificationType;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -26,6 +31,7 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AuthService {
 
     private final UserRepository userRepository;
@@ -36,6 +42,7 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final MediaUploadService mediaUploadService;
     private final BusinessDocumentRepository businessDocumentRepository;
+    private final AdminNotificationService adminNotificationService;
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
@@ -95,19 +102,68 @@ public class AuthService {
         shop.setStatus(ShopStatus.PENDING); // Explicitly set to PENDING
         shop.setVerificationStatus(com.cakeplatform.api.modules.shop.VerificationStatus.PROCESSING);
 
-        shopRepository.save(shop);
+        Shop savedShop = shopRepository.save(shop);
 
-        // 3. Process Verification Document
+        // 3. Dispatch Admin Notifications: NEW_BAKERY & BAKERY_AWAITING_APPROVAL
+        try {
+            adminNotificationService.dispatchAdminNotification(
+                    AdminNotificationType.NEW_BAKERY,
+                    "New Bakery Registered: " + savedShop.getBusinessName(),
+                    String.format("%s registered by %s (%s) in %s, %s",
+                            savedShop.getBusinessName(),
+                            savedUser.getFullName(),
+                            savedUser.getEmail(),
+                            savedShop.getCity() != null ? savedShop.getCity() : "N/A",
+                            savedShop.getState() != null ? savedShop.getState() : "N/A"),
+                    AdminNotificationPriority.NORMAL,
+                    AdminNotificationCategory.BAKERY,
+                    savedShop.getId().toString(),
+                    "SHOP",
+                    "/admin/shops/" + savedShop.getId()
+            );
+
+            if (savedShop.getStatus() == ShopStatus.PENDING) {
+                adminNotificationService.dispatchAdminNotification(
+                        AdminNotificationType.BAKERY_AWAITING_APPROVAL,
+                        "Bakery Awaiting Approval: " + savedShop.getBusinessName(),
+                        String.format("%s is awaiting administrative review and approval.", savedShop.getBusinessName()),
+                        AdminNotificationPriority.HIGH,
+                        AdminNotificationCategory.BAKERY,
+                        savedShop.getId().toString(),
+                        "SHOP",
+                        "/admin/shops/" + savedShop.getId()
+                );
+            }
+        } catch (Exception ex) {
+            log.error("Failed to dispatch admin notification for new bakery registration: {}", ex.getMessage());
+        }
+
+        // 4. Process Verification Document
         if (request.getVerificationFile() != null && !request.getVerificationFile().isEmpty()) {
             String fileUrl = mediaUploadService.storeFile(request.getVerificationFile(), "verifications");
             
             BusinessDocument doc = new BusinessDocument();
-            doc.setShop(shop);
+            doc.setShop(savedShop);
             doc.setDocumentType(com.cakeplatform.api.modules.shop.DocumentType.FSSAI_CERTIFICATE);
             doc.setFileUrl(fileUrl);
             doc.setStatus(com.cakeplatform.api.modules.shop.VerificationStatus.PROCESSING);
             
-            businessDocumentRepository.save(doc);
+            BusinessDocument savedDoc = businessDocumentRepository.save(doc);
+
+            try {
+                adminNotificationService.dispatchAdminNotification(
+                        AdminNotificationType.VERIFICATION_SUBMITTED,
+                        "Verification Submitted: " + savedShop.getBusinessName(),
+                        String.format("FSSAI / Business document submitted for %s.", savedShop.getBusinessName()),
+                        AdminNotificationPriority.HIGH,
+                        AdminNotificationCategory.BAKERY,
+                        savedDoc.getId().toString(),
+                        "BUSINESS_DOCUMENT",
+                        "/admin/shops/" + savedShop.getId()
+                );
+            } catch (Exception ex) {
+                log.error("Failed to dispatch admin notification for verification document: {}", ex.getMessage());
+            }
         }
 
         CustomUserDetails userDetails = new CustomUserDetails(savedUser);

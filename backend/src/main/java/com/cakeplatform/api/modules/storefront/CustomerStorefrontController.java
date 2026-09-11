@@ -55,8 +55,10 @@ public class CustomerStorefrontController {
 
 
     @GetMapping("/{shopId}/delivery-slots")
-    public ResponseEntity<List<StorefrontDeliverySlotResponse>> getShopDeliverySlots(@PathVariable Long shopId) {
-        return ResponseEntity.ok(storefrontService.getShopDeliverySlots(shopId));
+    public ResponseEntity<List<StorefrontDeliverySlotResponse>> getShopDeliverySlots(
+            @PathVariable Long shopId,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate date) {
+        return ResponseEntity.ok(storefrontService.getShopDeliverySlots(shopId, date));
     }
 
     @GetMapping("/{shopId}/products")
@@ -83,6 +85,11 @@ public class CustomerStorefrontController {
             @PathVariable Long shopId,
             @Valid @RequestBody ValidateCouponRequest request) {
         return ResponseEntity.ok(storefrontService.validateCouponForStorefront(shopId, request));
+    }
+
+    @GetMapping("/{shopId}/coupons")
+    public ResponseEntity<List<com.cakeplatform.api.modules.storefront.dto.PublicCouponResponse>> getPublicShopCoupons(@PathVariable Long shopId) {
+        return ResponseEntity.ok(storefrontService.getPublicShopCoupons(shopId));
     }
 
     @GetMapping("/orders/{orderNumber}")

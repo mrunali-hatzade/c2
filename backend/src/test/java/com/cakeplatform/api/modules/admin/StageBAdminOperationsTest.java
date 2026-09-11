@@ -54,6 +54,7 @@ class StageBAdminOperationsTest {
     @Mock private BusinessDocumentRepository businessDocumentRepository;
     @Mock private NotificationService notificationService;
     @Mock private ActivityLoggerService activityLogger;
+    @Mock private com.cakeplatform.api.modules.notification.AdminNotificationService adminNotificationService;
 
     private AdminDashboardService adminDashboardService;
     private VerificationService verificationService;
@@ -81,7 +82,8 @@ class StageBAdminOperationsTest {
         verificationService = new VerificationService(
                 shopRepository,
                 businessDocumentRepository,
-                activityLogRepository
+                activityLogRepository,
+                adminNotificationService
         );
 
         testOwner = new User();

@@ -4,7 +4,12 @@ import com.cakeplatform.api.modules.audit.ActivityLog;
 import com.cakeplatform.api.modules.audit.ActivityLogRepository;
 import com.cakeplatform.api.modules.shop.*;
 import com.cakeplatform.api.modules.shop.dto.DocumentUploadRequest;
+import com.cakeplatform.api.modules.notification.AdminNotificationCategory;
+import com.cakeplatform.api.modules.notification.AdminNotificationPriority;
+import com.cakeplatform.api.modules.notification.AdminNotificationService;
+import com.cakeplatform.api.modules.notification.AdminNotificationType;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,11 +19,13 @@ import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class VerificationService {
 
     private final ShopRepository shopRepository;
     private final BusinessDocumentRepository documentRepository;
     private final ActivityLogRepository activityLogRepository;
+    private final AdminNotificationService adminNotificationService;
 
     @Transactional
     public BusinessDocument uploadDocument(Long ownerId, DocumentUploadRequest request) {
@@ -37,6 +44,21 @@ public class VerificationService {
         if (shop.getVerificationStatus() != VerificationStatus.VERIFIED) {
             shop.setVerificationStatus(VerificationStatus.PROCESSING);
             shopRepository.save(shop);
+        }
+
+        try {
+            adminNotificationService.dispatchAdminNotification(
+                    AdminNotificationType.VERIFICATION_SUBMITTED,
+                    "Verification Submitted: " + shop.getBusinessName(),
+                    String.format("Business verification document (%s) uploaded for %s.", savedDoc.getDocumentType(), shop.getBusinessName()),
+                    AdminNotificationPriority.HIGH,
+                    AdminNotificationCategory.BAKERY,
+                    savedDoc.getId().toString(),
+                    "BUSINESS_DOCUMENT",
+                    "/admin/shops/" + shop.getId()
+            );
+        } catch (Exception ex) {
+            log.error("Failed to dispatch admin notification for verification upload: {}", ex.getMessage());
         }
         
         return savedDoc;

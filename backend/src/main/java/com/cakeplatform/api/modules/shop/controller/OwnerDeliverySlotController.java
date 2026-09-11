@@ -27,6 +27,7 @@ public class OwnerDeliverySlotController {
 
     private final ShopDeliverySlotRepository deliverySlotRepository;
     private final ShopAccessValidator shopAccessValidator;
+    private final com.cakeplatform.api.modules.order.OrderRepository orderRepository;
 
     @GetMapping
     public ResponseEntity<List<ShopDeliverySlot>> getSlots(@AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -78,7 +79,19 @@ public class OwnerDeliverySlotController {
         slot.setDayOfWeek(request.getDayOfWeek());
         slot.setStartTime(request.getStartTime());
         slot.setEndTime(request.getEndTime());
-        slot.setMaxOrders(request.getMaxOrders() != null ? request.getMaxOrders() : 10);
+
+        if (request.getMaxOrders() != null) {
+            int newMax = request.getMaxOrders();
+            if (newMax <= 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Capacity must be greater than zero");
+            }
+            int maxActive = orderRepository.findMaxActiveOrdersOnAnyUpcomingDate(slot.getId());
+            if (newMax < maxActive) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Capacity cannot be lower than the number of active orders already assigned to this slot (" + maxActive + ").");
+            }
+            slot.setMaxOrders(newMax);
+        }
         
         if (request.getIsActive() != null) {
             slot.setIsActive(request.getIsActive());

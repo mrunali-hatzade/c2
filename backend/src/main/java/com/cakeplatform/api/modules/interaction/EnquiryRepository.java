@@ -10,4 +10,5 @@ import java.util.Optional;
 public interface EnquiryRepository extends JpaRepository<Enquiry, Long> {
     List<Enquiry> findByShopIdOrderByCreatedAtDesc(Long shopId);
     Optional<Enquiry> findByIdAndShopId(Long id, Long shopId);
+    void deleteByShopId(Long shopId);
 }

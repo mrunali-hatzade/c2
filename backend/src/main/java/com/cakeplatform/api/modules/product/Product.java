@@ -34,6 +34,12 @@ public class Product {
 
     private String description;
 
+    @Column(columnDefinition = "TEXT")
+    private String ingredients;
+
+    @Column(columnDefinition = "TEXT")
+    private String allergens;
+
     @Column(nullable = false)
     private BigDecimal price;
 

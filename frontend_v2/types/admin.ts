@@ -74,6 +74,11 @@ export interface AdminShopDetails {
   businessDocuments?: BusinessDocumentItem[];
   totalProducts: number;
   totalOrders: number;
+  totalRevenue?: number;
+  monthlyRevenue?: number;
+  weeklyRevenue?: number;
+  completedOrders?: number;
+  cancelledOrders?: number;
 }
 
 export interface AdminPlan {

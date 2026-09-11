@@ -17,4 +17,9 @@ public class AdminShopDetailsResponse {
     private List<com.cakeplatform.api.modules.shop.BusinessDocument> businessDocuments;
     private long totalProducts;
     private long totalOrders;
+    private java.math.BigDecimal totalRevenue;
+    private java.math.BigDecimal monthlyRevenue;
+    private java.math.BigDecimal weeklyRevenue;
+    private long completedOrders;
+    private long cancelledOrders;
 }

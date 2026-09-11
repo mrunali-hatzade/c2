@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState } from 'react';
 import { Store, SlidersHorizontal, RotateCcw, Compass, AlertCircle } from 'lucide-react';
@@ -18,21 +18,21 @@ interface BakeryGridProps {
 }
 
 const BakeryCardSkeleton = () => (
-  <Card className="h-full flex flex-col overflow-hidden border-brand-border/80 bg-white p-0 animate-pulse">
+  <Card className="h-full flex flex-col overflow-hidden border border-brand-border/70 bg-white p-0 rounded-3xl animate-pulse shadow-sm">
     {/* Image Skeleton */}
     <div className="aspect-[16/9] w-full bg-brand-cream/80 relative">
-      <div className="absolute top-3 left-3 w-16 h-5 bg-white/70 rounded-full" />
-      <div className="absolute top-3 right-3 w-12 h-5 bg-white/70 rounded-full" />
-      <div className="absolute -bottom-4 left-5 w-12 h-12 rounded-2xl bg-white border-2 border-white shadow-sm" />
+      <div className="absolute top-3 left-3 w-20 h-5 bg-white/70 rounded-full" />
+      <div className="absolute top-3 right-3 w-14 h-5 bg-white/70 rounded-full" />
+      <div className="absolute -bottom-4 left-5 w-13 h-13 rounded-2xl bg-white border-2 border-white shadow-sm" />
     </div>
     {/* Body Skeleton */}
-    <div className="pt-6 p-5 flex flex-col flex-1 space-y-3">
-      <div className="h-5 bg-brand-cream/80 rounded-md w-3/4" />
+    <div className="pt-6 p-5 sm:p-6 flex flex-col flex-1 space-y-3">
+      <div className="h-5 bg-brand-cream/80 rounded-lg w-3/4" />
       <div className="h-3.5 bg-brand-cream/60 rounded-md w-1/2" />
-      <div className="h-10 bg-brand-cream/40 rounded-md w-full mt-2" />
+      <div className="h-10 bg-brand-cream/40 rounded-xl w-full mt-2" />
       <div className="mt-4 pt-3 border-t border-brand-border/50 flex justify-between">
-        <div className="h-4 bg-brand-cream/70 rounded-full w-20" />
-        <div className="h-4 bg-brand-cream/70 rounded-full w-14" />
+        <div className="h-4 bg-brand-cream/70 rounded-full w-24" />
+        <div className="h-4 bg-brand-cream/70 rounded-full w-16" />
       </div>
       <div className="h-9 bg-brand-cream/70 rounded-xl w-full mt-3" />
     </div>

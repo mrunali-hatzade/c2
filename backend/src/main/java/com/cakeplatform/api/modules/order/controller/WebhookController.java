@@ -35,6 +35,7 @@ public class WebhookController {
     private final ShopRepository shopRepository;
     private final RazorpayService razorpayService;
     private final NotificationService notificationService;
+    private final com.cakeplatform.api.modules.notification.AdminNotificationService adminNotificationService;
     private final ActivityLoggerService activityLogger;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -150,6 +151,21 @@ public class WebhookController {
                             );
                         }
 
+                        // Dispatch Admin Notification (PAYMENT_RECEIVED)
+                        try {
+                            adminNotificationService.dispatchAdminNotification(
+                                    com.cakeplatform.api.modules.notification.AdminNotificationType.PAYMENT_RECEIVED,
+                                    "Payment Received: ₹" + order.getTotalAmount(),
+                                    String.format("Payment of ₹%s received for order %s (%s).",
+                                            order.getTotalAmount(), order.getOrderNumber(), order.getShop().getBusinessName()),
+                                    com.cakeplatform.api.modules.notification.AdminNotificationPriority.NORMAL,
+                                    com.cakeplatform.api.modules.notification.AdminNotificationCategory.PAYMENTS,
+                                    transactionId != null ? transactionId : order.getOrderNumber(),
+                                    "PAYMENT",
+                                    "/admin/shops/" + order.getShop().getId()
+                            );
+                        } catch (Exception ignored) {}
+
                         activityLogger.logActivity(null, order.getShop().getId(), "PAYMENT_CAPTURED_WEBHOOK", "ORDER", order.getId(), "Tx: " + transactionId);
                         return ResponseEntity.ok("Webhook processed (order confirmed)");
                     }
@@ -209,12 +225,12 @@ public class WebhookController {
             // Event: payment.failed
             // =========================================================================
             if ("payment.failed".equals(event)) {
-                log.info("Processing webhook payment.failed: txId={}", transactionId);
                 String errorDescription = "Payment failed at gateway";
-                @SuppressWarnings("unchecked")
-                Map<String, Object> errorObj = (Map<String, Object>) entity.get("error_description");
-                if (errorObj != null) {
-                    errorDescription = String.valueOf(errorObj);
+                Object rawError = entity.get("error_description");
+                if (rawError != null) {
+                    errorDescription = String.valueOf(rawError);
+                } else if (entity.containsKey("error")) {
+                    errorDescription = String.valueOf(entity.get("error"));
                 }
 
                 // If customer order, keep order as PENDING/NEW but record failure in activity log
@@ -225,6 +241,21 @@ public class WebhookController {
                         activityLogger.logActivity(null, order.getShop().getId(), "PAYMENT_FAILED_WEBHOOK", "ORDER", order.getId(), errorDescription);
                     }
                 }
+
+                // Dispatch Admin Notification (PAYMENT_FAILED)
+                try {
+                    adminNotificationService.dispatchAdminNotification(
+                            com.cakeplatform.api.modules.notification.AdminNotificationType.PAYMENT_FAILED,
+                            "Payment Failed",
+                            String.format("Payment failure reported for transaction %s. Error: %s",
+                                    transactionId != null ? transactionId : "N/A", errorDescription),
+                            com.cakeplatform.api.modules.notification.AdminNotificationPriority.HIGH,
+                            com.cakeplatform.api.modules.notification.AdminNotificationCategory.PAYMENTS,
+                            transactionId != null ? transactionId : "TX-" + System.currentTimeMillis(),
+                            "PAYMENT",
+                            "/admin/shops"
+                    );
+                } catch (Exception ignored) {}
             }
 
             return ResponseEntity.ok("Webhook processed");

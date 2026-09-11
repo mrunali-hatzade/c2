@@ -11,6 +11,8 @@ public class ProductRequest {
     private String name;
     
     private String description;
+    private String ingredients;
+    private String allergens;
     
     @NotNull
     private BigDecimal price;

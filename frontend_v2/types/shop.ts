@@ -6,6 +6,7 @@ export interface Shop {
   businessType?: string;
   businessCategory?: string;
   businessDescription?: string;
+  description?: string;
   businessPhone?: string;
   businessEmail?: string;
   phone?: string;

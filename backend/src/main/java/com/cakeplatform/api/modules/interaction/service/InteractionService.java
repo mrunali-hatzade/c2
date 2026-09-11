@@ -50,7 +50,7 @@ public class InteractionService {
                 NotificationType.NEW_FEEDBACK,
                 "New Feedback",
                 "You have received a new " + request.getRating() + "-star rating.",
-                saved.getId().toString(),
+                saved.getId() != null ? saved.getId().toString() : "0",
                 true
         );
 
@@ -75,7 +75,7 @@ public class InteractionService {
                 NotificationType.NEW_ENQUIRY,
                 "New Enquiry",
                 "You have received a new " + request.getEnquiryType() + " enquiry from " + request.getCustomerName(),
-                saved.getId().toString(),
+                saved.getId() != null ? saved.getId().toString() : "0",
                 true
         );
 
@@ -108,7 +108,7 @@ public class InteractionService {
                 NotificationType.CUSTOM_ORDER_REQUEST,
                 "Custom Cake Request",
                 "New custom cake request received from " + request.getCustomerName(),
-                saved.getId().toString(),
+                saved.getId() != null ? saved.getId().toString() : "0",
                 true
         );
 

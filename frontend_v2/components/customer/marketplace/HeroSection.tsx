@@ -22,7 +22,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   onSelectLocation,
 }) => {
   return (
-    <section className="relative isolate overflow-hidden bg-brand-cream-light py-16 sm:py-20 px-4 sm:px-6 lg:px-8 border-b border-brand-border/60">
+    <section className="relative isolate overflow-hidden bg-brand-cream-light pt-6 sm:pt-8 pb-12 sm:pb-14 px-4 sm:px-6 lg:px-8 border-b border-brand-border/60">
       {/* Background Bakers & Cake Kitchen Artwork on the Right */}
       <div className="absolute inset-0 z-0 pointer-events-none">
         <Image
@@ -39,20 +39,20 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
 
       <div className="relative z-10 max-w-5xl mx-auto text-center">
         {/* Badge */}
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand-blush border border-brand-blush-border text-brand-plum text-xs font-semibold tracking-wide shadow-2xs mb-6">
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-brand-blush/90 border border-brand-blush-border text-brand-plum text-xs font-semibold tracking-wide shadow-2xs mb-4 backdrop-blur-xs animate-in fade-in slide-in-from-bottom-2 duration-300">
           <Sparkles className="w-3.5 h-3.5 text-brand-plum" />
-          <span>Verified Indian Artisanal Bakery Network</span>
+          <span>India&apos;s Curated Artisanal Bakery Marketplace</span>
         </div>
 
         {/* Hero Title */}
-        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-serif font-bold tracking-tight text-brand-espresso leading-[1.15] max-w-4xl mx-auto">
-          Handcrafted Cakes from <br className="hidden sm:inline" />
-          <span className="text-brand-plum italic">Exceptional Local Bakeries</span>
+        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-serif font-bold tracking-tight text-brand-espresso leading-[1.12] max-w-4xl mx-auto">
+          Celebrations Begin with <br className="hidden sm:inline" />
+          <span className="text-brand-plum italic">Exceptional Cakes</span>
         </h1>
 
         {/* Subtitle */}
         <p className="mt-4 text-sm sm:text-base lg:text-lg text-brand-muted max-w-2xl mx-auto font-normal leading-relaxed">
-          Discover certified boutique bakers in Mumbai, Pune, Bengaluru, Delhi NCR and beyond. Order directly from their independent storefronts.
+          Order handcrafted celebration cakes, cupcakes, and confections directly from certified independent home bakers and boutique studios in your neighborhood.
         </p>
 
         {/* Central Search Bar */}
@@ -62,6 +62,30 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             onSearch={onSearch}
             className="shadow-elevated"
           />
+        </div>
+
+        {/* Quick City Selector Bar */}
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 text-xs text-brand-muted">
+          <span className="font-semibold text-brand-espresso/80 mr-1 text-[11px] uppercase tracking-wider">
+            Popular Cities:
+          </span>
+          {['Mumbai', 'Pune', 'Bengaluru', 'Delhi NCR', 'Nagpur'].map((city) => (
+            <button
+              key={city}
+              type="button"
+              onClick={() => {
+                onSelectLocation(city);
+                onSearch({ search: '', location: city });
+              }}
+              className={`px-2.5 py-1 rounded-full text-xs transition-all border ${
+                selectedLocation === city
+                  ? 'bg-brand-plum text-white border-brand-plum font-semibold shadow-2xs'
+                  : 'bg-white/80 hover:bg-brand-blush/70 text-brand-espresso border-brand-border/60 hover:border-brand-plum/30'
+              }`}
+            >
+              {city}
+            </button>
+          ))}
         </div>
 
         {/* Quick Category Filter Pills */}
@@ -74,17 +98,17 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
 
         {/* Trust Badges under Hero */}
         <div className="mt-10 pt-6 border-t border-brand-border/60 flex flex-wrap items-center justify-center gap-6 sm:gap-10 text-xs text-brand-muted font-medium">
-          <span className="flex items-center gap-2">
+          <span className="flex items-center gap-2 bg-white/70 px-3 py-1.5 rounded-full border border-brand-border/40 shadow-2xs">
             <ShieldCheck className="w-4 h-4 text-emerald-600" />
-            <span>FSSAI Verified Kitchens</span>
+            <span className="font-semibold text-brand-espresso">FSSAI Certified</span>
           </span>
-          <span className="flex items-center gap-2">
-            <Heart className="w-4 h-4 text-rose-500" />
-            <span>100% Handcrafted Small-Batch</span>
+          <span className="flex items-center gap-2 bg-white/70 px-3 py-1.5 rounded-full border border-brand-border/40 shadow-2xs">
+            <Heart className="w-4 h-4 text-rose-500 fill-rose-500/20" />
+            <span className="font-semibold text-brand-espresso">100% Handcrafted</span>
           </span>
-          <span className="flex items-center gap-2">
+          <span className="flex items-center gap-2 bg-white/70 px-3 py-1.5 rounded-full border border-brand-border/40 shadow-2xs">
             <Clock className="w-4 h-4 text-amber-600" />
-            <span>Dedicated In-Store Fulfillment</span>
+            <span className="font-semibold text-brand-espresso">Direct Kitchen Fulfillment</span>
           </span>
         </div>
       </div>

@@ -42,8 +42,8 @@ export default function LoginPage() {
       setEmail('owner@sweetdelight.com');
       setPassword('password123');
     } else {
-      setEmail('admin@cakestore.com');
-      setPassword('admin123');
+      setEmail('admin@cakeplatform.com');
+      setPassword('Password123!');
     }
   };
 

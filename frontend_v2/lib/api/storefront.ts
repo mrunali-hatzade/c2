@@ -96,4 +96,25 @@ export const storefrontApi = {
       { code, subtotal }
     );
   },
+
+  getShopFeedback: async (shopId: number | string): Promise<any[]> => {
+    try {
+      const data = await apiClient.get<any[]>(`/api/storefront/shops/${shopId}/feedback`);
+      return Array.isArray(data) ? data : [];
+    } catch {
+      return [];
+    }
+  },
+
+  submitFeedback: async (
+    shopId: number | string,
+    payload: {
+      customerDisplayName?: string;
+      rating: number;
+      comment: string;
+      orderReference?: string;
+    }
+  ): Promise<any> => {
+    return apiClient.post(`/api/storefront/shops/${shopId}/feedback`, payload);
+  },
 };

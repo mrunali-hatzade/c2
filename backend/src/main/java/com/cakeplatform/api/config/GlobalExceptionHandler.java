@@ -38,6 +38,14 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.CONFLICT);
     }
 
+    @ExceptionHandler(com.cakeplatform.api.exception.DeliverySlotFullException.class)
+    public ResponseEntity<Map<String, Object>> handleDeliverySlotFullException(com.cakeplatform.api.exception.DeliverySlotFullException ex) {
+        Map<String, Object> error = new HashMap<>();
+        error.put("error", ex.getErrorCode());
+        error.put("message", ex.getMessage());
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+
     @ExceptionHandler(com.cakeplatform.api.exception.ResourceNotFoundException.class)
     public ResponseEntity<Map<String, String>> handleResourceNotFoundException(com.cakeplatform.api.exception.ResourceNotFoundException ex) {
         Map<String, String> error = new HashMap<>();

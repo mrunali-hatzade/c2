@@ -12,6 +12,8 @@ import { useAuth } from '@/lib/auth/AuthContext';
 import { OwnerProvider, useOwner } from '@/context/OwnerContext';
 import { Button } from '@/components/ui/Button';
 import NotificationBell from '@/components/owner/NotificationBell';
+import OwnerFeedbackModal from '@/components/owner/OwnerFeedbackModal';
+import { MessageCircle, Sparkles } from 'lucide-react';
 
 function OwnerLayoutContent({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -19,6 +21,7 @@ function OwnerLayoutContent({ children }: { children: ReactNode }) {
   const { user, logout, isAuthenticated, isLoading } = useAuth();
   const { shop, refreshDashboard, isRefreshing, refreshStatus, refreshError } = useOwner();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
 
   // Auth guard
   useEffect(() => {
@@ -114,6 +117,13 @@ function OwnerLayoutContent({ children }: { children: ReactNode }) {
         <NavLinks />
       </nav>
       <div className="p-4 border-t border-white/10 shrink-0 mt-auto">
+        <button
+          onClick={() => setIsFeedbackOpen(true)}
+          className="w-full mb-3 flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-semibold transition-colors cursor-pointer"
+        >
+          <Sparkles className="w-3.5 h-3.5 text-brand-blush" />
+          <span>Give Feedback</span>
+        </button>
         <div className="mb-3 px-2">
           <p className="text-xs text-white font-medium truncate">{user?.email || 'Bakery Owner'}</p>
           <p className="text-[10px] text-owner-sidebar-text">Shop ID: {shop?.id || user?.shopId || 'N/A'}</p>
@@ -163,6 +173,16 @@ function OwnerLayoutContent({ children }: { children: ReactNode }) {
             {/* Live Operational Notification Bell & Popover */}
             <NotificationBell />
 
+            {/* Platform Feedback Button */}
+            <button
+              onClick={() => setIsFeedbackOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-owner-border bg-white hover:bg-brand-cream text-xs font-semibold text-brand-plum transition-all shadow-2xs cursor-pointer"
+              title="Give feedback about the CakeStore platform"
+            >
+              <MessageCircle className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">Platform Feedback</span>
+            </button>
+
             {/* Moved & Functional Top Header Refresh Button */}
             <button
               onClick={refreshDashboard}
@@ -202,6 +222,10 @@ function OwnerLayoutContent({ children }: { children: ReactNode }) {
           </div>
         </main>
       </div>
+      <OwnerFeedbackModal
+        isOpen={isFeedbackOpen}
+        onClose={() => setIsFeedbackOpen(false)}
+      />
     </div>
   );
 }

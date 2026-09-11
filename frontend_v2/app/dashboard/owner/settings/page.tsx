@@ -31,6 +31,9 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
 import { LoadingState } from '@/components/ui/LoadingState';
+import OwnerFeedbackModal from '@/components/owner/OwnerFeedbackModal';
+import DeleteAccountModal from '@/components/owner/DeleteAccountModal';
+import { MessageSquare, Star, AlertTriangle, Trash2 } from 'lucide-react';
 
 export default function OwnerSettingsPage() {
   const { updateShop, registerRefreshHandler } = useOwner();
@@ -38,6 +41,8 @@ export default function OwnerSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -240,7 +245,7 @@ export default function OwnerSettingsPage() {
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <h3 className="font-bold text-sm text-amber-950 font-serif">
-                  KYC Verification Action Required
+                  Business Verification Action Required
                 </h3>
                 <span className="px-2 py-0.5 rounded-md bg-amber-200/70 text-amber-800 text-[10px] font-bold uppercase tracking-wider">
                   Action Required
@@ -487,6 +492,44 @@ export default function OwnerSettingsPage() {
           </Button>
         </form>
       )}
+
+      {/* Danger Zone */}
+      <div className="pt-6 border-t border-owner-border/80">
+        <div className="rounded-3xl border border-red-200 bg-red-50/40 p-6 sm:p-8 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-100 border border-red-200 text-[11px] font-bold text-red-700 uppercase tracking-wider">
+                <AlertTriangle className="w-3.5 h-3.5 text-red-600" />
+                <span>Danger Zone</span>
+              </div>
+              <h2 className="font-serif font-bold text-lg text-red-950">Delete CakeStore Account</h2>
+              <p className="text-xs text-red-800/80 max-w-xl leading-relaxed">
+                Permanently delete your bakery owner account, storefront, products, menu variants, and configuration. This action is irreversible and cannot be undone.
+              </p>
+            </div>
+            <Button
+              type="button"
+              onClick={() => setIsDeleteModalOpen(true)}
+              className="shrink-0 bg-red-600 hover:bg-red-700 text-white font-bold shadow-sm"
+              size="sm"
+            >
+              <Trash2 className="w-4 h-4 mr-1.5" />
+              Delete Account
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <OwnerFeedbackModal
+        isOpen={isFeedbackModalOpen}
+        onClose={() => setIsFeedbackModalOpen(false)}
+      />
+
+      <DeleteAccountModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        shopName={businessName}
+      />
     </div>
   );
 }

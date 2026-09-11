@@ -7,7 +7,7 @@ export const ordersApi = {
   },
 
   getOrderByNumber: async (orderNumber: string): Promise<Order> => {
-    return apiClient.get<Order>(`/api/storefront/orders/${orderNumber}`);
+    return apiClient.get<Order>(`/api/storefront/shops/orders/${orderNumber}`);
   },
 
   getOwnerOrders: async (status?: string): Promise<Order[]> => {
@@ -29,6 +29,27 @@ export const ordersApi = {
     const response = await fetch(`${API_BASE_URL}/api/owner/orders/${id}/invoice`, {
       method: 'GET',
       headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to download invoice: ${response.statusText}`);
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `invoice-${orderNumber}.pdf`);
+    document.body.appendChild(link);
+    link.click();
+    link.parentNode?.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  },
+
+  downloadStorefrontInvoice: async (orderNumber: string): Promise<void> => {
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+    const response = await fetch(`${API_BASE_URL}/api/storefront/shops/orders/${orderNumber}/invoice`, {
+      method: 'GET',
     });
 
     if (!response.ok) {

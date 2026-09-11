@@ -1,30 +1,83 @@
-'use client';
-/* eslint-disable @next/next/no-img-element */
-
-import React from 'react';
-import { X, ShoppingBag, Plus, Minus, Trash2, ArrowRight, Store } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, ShoppingBag, Plus, Minus, Trash2, ArrowRight, Store, Tag, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
+import { storefrontApi } from '@/lib/api/storefront';
 
 export const CartDrawer: React.FC = () => {
+  const router = useRouter();
   const {
     items,
     totalPrice,
     totalItems,
     isCartOpen,
     setIsCartOpen,
-    setIsCheckoutOpen,
     updateQuantity,
     removeItem,
     clearCart,
     currentShopName,
+    currentShopId,
+    appliedCoupon,
+    setAppliedCoupon,
   } = useCart();
+
+  const [couponCode, setCouponCode] = useState('');
+  const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [couponSuccess, setCouponSuccess] = useState<string | null>(null);
 
   if (!isCartOpen) return null;
 
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) {
+      setCouponError('Please enter a coupon code.');
+      return;
+    }
+    if (!currentShopId) return;
+
+    setIsValidatingCoupon(true);
+    setCouponError(null);
+    setCouponSuccess(null);
+
+    try {
+      const res = await storefrontApi.validateCoupon(currentShopId, couponCode.trim(), totalPrice);
+      if (res.valid && res.code) {
+        setAppliedCoupon({
+          code: res.code,
+          discountType: res.discountType || 'PERCENTAGE',
+          discountValue: res.discountValue || 0,
+          discountAmount: res.discountAmount || 0,
+        });
+        setCouponSuccess(res.message || 'Coupon applied successfully!');
+        setCouponCode('');
+      } else {
+        setCouponError(res.message || 'Invalid coupon code for this bakery.');
+      }
+    } catch (err: any) {
+      setCouponError(err.message || 'Failed to validate coupon.');
+    } finally {
+      setIsValidatingCoupon(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponError(null);
+    setCouponSuccess(null);
+  };
+
+  const deliveryCharge = items.length > 0 ? 50 : 0;
+  const discountAmount = appliedCoupon ? appliedCoupon.discountAmount : 0;
+  const finalTotal = Math.max(0, totalPrice - discountAmount + deliveryCharge);
+
   const handleProceedToCheckout = () => {
     setIsCartOpen(false);
-    setIsCheckoutOpen(true);
+    if (currentShopId) {
+      router.push(`/shop/${currentShopId}?tab=checkout`);
+    } else {
+      router.push('/explore');
+    }
   };
 
   return (
@@ -154,21 +207,107 @@ export const CartDrawer: React.FC = () => {
 
           {/* Drawer Footer */}
           {items.length > 0 && (
-            <div className="p-6 border-t border-brand-border/60 bg-white space-y-4">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-brand-muted">Subtotal ({totalItems} items):</span>
-                <span className="font-serif font-bold text-xl text-brand-espresso">
-                  ₹{totalPrice}
-                </span>
+            <div className="p-5 sm:p-6 border-t border-brand-border/80 bg-brand-cream-light/30 space-y-4">
+              {/* Coupon Validation Block */}
+              <div className="space-y-2">
+                {appliedCoupon ? (
+                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs">
+                    <div className="flex items-center gap-2">
+                      <Tag className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <div>
+                        <span className="font-bold text-emerald-800 uppercase tracking-wider">{appliedCoupon.code}</span>
+                        <span className="text-emerald-700 ml-1.5 font-medium">applied (-₹{appliedCoupon.discountAmount})</span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRemoveCoupon}
+                      className="p-1 rounded-md text-emerald-700 hover:text-red-600 hover:bg-emerald-100 transition-colors"
+                      title="Remove coupon"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Tag className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-brand-muted" />
+                        <input
+                          type="text"
+                          placeholder="Coupon code (e.g. SWEET10)"
+                          value={couponCode}
+                          onChange={(e) => {
+                            setCouponCode(e.target.value.toUpperCase());
+                            setCouponError(null);
+                          }}
+                          className="w-full pl-8 pr-3 py-2 text-xs uppercase font-medium bg-white rounded-xl border border-brand-border focus:outline-none focus:border-brand-plum focus:ring-1 focus:ring-brand-plum"
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={handleApplyCoupon}
+                        disabled={isValidatingCoupon || !couponCode.trim()}
+                        className="rounded-xl px-4 text-xs font-bold text-brand-plum border-brand-plum hover:bg-brand-plum hover:text-white shrink-0"
+                      >
+                        {isValidatingCoupon ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Apply'}
+                      </Button>
+                    </div>
+
+                    {couponError && (
+                      <p className="text-[11px] text-red-600 flex items-center gap-1 mt-1.5 font-medium">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        <span>{couponError}</span>
+                      </p>
+                    )}
+                    {couponSuccess && (
+                      <p className="text-[11px] text-emerald-600 flex items-center gap-1 mt-1.5 font-medium">
+                        <CheckCircle2 className="w-3 h-3 shrink-0" />
+                        <span>{couponSuccess}</span>
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
 
+              {/* Bill Breakdown */}
+              <div className="bg-white rounded-2xl p-3.5 border border-brand-border/70 space-y-1.5 text-xs">
+                <div className="flex items-center justify-between text-brand-muted">
+                  <span>Subtotal ({totalItems} items):</span>
+                  <span className="text-brand-espresso font-medium">₹{totalPrice}</span>
+                </div>
+
+                {appliedCoupon && (
+                  <div className="flex items-center justify-between text-emerald-700 font-medium">
+                    <span>Coupon Discount ({appliedCoupon.code}):</span>
+                    <span>-₹{appliedCoupon.discountAmount}</span>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between text-brand-muted">
+                  <span>Delivery Estimate:</span>
+                  <span className="text-brand-espresso font-medium">₹{deliveryCharge}</span>
+                </div>
+
+                <div className="pt-2 border-t border-brand-border/60 flex items-center justify-between font-bold text-sm">
+                  <span className="text-brand-espresso">Total Payable:</span>
+                  <span className="font-serif font-bold text-xl text-brand-plum">
+                    ₹{finalTotal}
+                  </span>
+                </div>
+              </div>
+
+              {/* Checkout Action */}
               <div className="space-y-2">
-                <Button onClick={handleProceedToCheckout} className="w-full" size="lg">
-                  Order from this Bakery <ArrowRight className="w-4 h-4 ml-1.5" />
+                <Button onClick={handleProceedToCheckout} className="w-full rounded-2xl h-11 font-bold shadow-sm" size="lg">
+                  <span>Proceed to Delivery & Payment</span>
+                  <ArrowRight className="w-4 h-4 ml-1.5" />
                 </Button>
                 <button
                   onClick={clearCart}
-                  className="w-full text-center text-xs text-brand-muted hover:text-red-600 py-1"
+                  className="w-full text-center text-xs text-brand-muted hover:text-red-600 py-1 transition-colors"
                 >
                   Clear store basket
                 </button>
@@ -180,3 +319,7 @@ export const CartDrawer: React.FC = () => {
     </div>
   );
 };
+
+
+
+

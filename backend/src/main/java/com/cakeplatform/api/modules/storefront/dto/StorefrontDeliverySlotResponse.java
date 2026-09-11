@@ -9,4 +9,8 @@ public class StorefrontDeliverySlotResponse {
     private String dayOfWeek;
     private LocalTime startTime;
     private LocalTime endTime;
+    private Integer maxOrders;
+    private Integer bookedOrders;
+    private Integer remainingCapacity;
+    private Boolean available;
 }

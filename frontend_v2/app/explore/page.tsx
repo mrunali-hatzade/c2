@@ -1,7 +1,8 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { X, SlidersHorizontal } from 'lucide-react';
 import { storefrontApi } from '@/lib/api/storefront';
 import { Shop } from '@/types/shop';
 import { Navbar } from '@/components/common/Navbar';
@@ -117,12 +118,64 @@ function ExploreContent() {
       />
 
       {/* Category Pills */}
-      <div className="flex justify-center mb-10">
+      <div className="flex justify-center mb-6">
         <CategoryPills
           activeCategory={activeCategory}
           onSelectCategory={handleSelectCategory}
         />
       </div>
+
+      {/* Active Filter Ribbon */}
+      {(searchQuery || locationQuery || activeCategory !== 'ALL') && (
+        <div className="flex flex-wrap items-center justify-center gap-2 mb-8 animate-in fade-in duration-200">
+          <span className="text-xs font-semibold text-brand-muted">Active Filters:</span>
+          {searchQuery && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-brand-border text-xs text-brand-espresso shadow-2xs">
+              <span>Keyword: &quot;{searchQuery}&quot;</span>
+              <button
+                onClick={() => setSearchQuery('')}
+                className="text-brand-muted hover:text-brand-espresso"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          )}
+          {locationQuery && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-brand-border text-xs text-brand-espresso shadow-2xs">
+              <span>Location: {locationQuery}</span>
+              <button
+                onClick={() => {
+                  setLocationQuery('');
+                  setLocationFilters({});
+                }}
+                className="text-brand-muted hover:text-brand-espresso"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          )}
+          {activeCategory !== 'ALL' && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-blush border border-brand-blush-border text-xs text-brand-plum font-medium shadow-2xs">
+              <span>Category: {activeCategory.replace(/_/g, ' ')}</span>
+              <button
+                onClick={() => {
+                  setActiveCategory('ALL');
+                  setActiveBusinessType(undefined);
+                }}
+                className="text-brand-plum hover:text-brand-espresso"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          )}
+          <button
+            onClick={handleClearFilters}
+            className="text-xs text-brand-plum font-bold hover:underline ml-2"
+          >
+            Clear all
+          </button>
+        </div>
+      )}
 
       {/* Grid */}
       <BakeryGrid

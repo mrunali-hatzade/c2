@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, ReactNode } from 'react';
 import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
@@ -41,11 +41,14 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     [removeToast]
   );
 
-  const toast = {
-    success: (msg: string) => addToast('success', msg),
-    error: (msg: string) => addToast('error', msg),
-    info: (msg: string) => addToast('info', msg),
-  };
+  const toast = useMemo(
+    () => ({
+      success: (msg: string) => addToast('success', msg),
+      error: (msg: string) => addToast('error', msg),
+      info: (msg: string) => addToast('info', msg),
+    }),
+    [addToast]
+  );
 
   return (
     <ToastContext.Provider value={{ toast }}>

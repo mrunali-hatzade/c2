@@ -25,6 +25,7 @@ public class SubscriptionService {
     private final ShopStatusManager shopStatusManager;
     private final ActivityLoggerService activityLogger;
     private final com.cakeplatform.api.modules.notification.NotificationService notificationService;
+    private final com.cakeplatform.api.modules.notification.AdminNotificationService adminNotificationService;
 
     private Shop getShopByOwnerId(Long ownerId) {
         List<Shop> shops = shopRepository.findByOwnerId(ownerId);
@@ -72,8 +73,9 @@ public class SubscriptionService {
         payment.setPaidAt(LocalDateTime.now());
 
         Payment savedPayment = paymentRepository.save(payment);
+        Long savedPaymentId = (savedPayment != null) ? savedPayment.getId() : null;
 
-        activityLogger.logActivity(userId, shop.getId(), "PAYMENT_COMPLETED", "PAYMENT", savedPayment.getId(), "Amount: " + amount);
+        activityLogger.logActivity(userId, shop.getId(), "PAYMENT_COMPLETED", "PAYMENT", savedPaymentId, "Amount: " + amount);
 
         // 3. Update Shop Status (with strict suspension & KYC precedence)
         if (shop.getStatus() == com.cakeplatform.api.modules.shop.ShopStatus.SUSPENDED) {
@@ -96,6 +98,20 @@ public class SubscriptionService {
                     false
             );
         }
+
+        // Dispatch Admin Notification (SUBSCRIPTION_RENEWED)
+        try {
+            adminNotificationService.dispatchAdminNotification(
+                    com.cakeplatform.api.modules.notification.AdminNotificationType.SUBSCRIPTION_RENEWED,
+                    "Subscription Renewed: " + shop.getBusinessName(),
+                    String.format("Subscription for %s renewed for %d days (₹%s).", shop.getBusinessName(), days, amount),
+                    com.cakeplatform.api.modules.notification.AdminNotificationPriority.NORMAL,
+                    com.cakeplatform.api.modules.notification.AdminNotificationCategory.SUBSCRIPTIONS,
+                    providerPaymentId != null ? providerPaymentId : (subscription.getId() != null ? subscription.getId().toString() : "SUB-" + System.currentTimeMillis()),
+                    "SUBSCRIPTION",
+                    "/admin/shops/" + shop.getId()
+            );
+        } catch (Exception ignored) {}
 
         return savedPayment;
     }
@@ -137,5 +153,19 @@ public class SubscriptionService {
                     true
             );
         }
+
+        // Dispatch Admin Notification (SUBSCRIPTION_EXPIRED)
+        try {
+            adminNotificationService.dispatchAdminNotification(
+                    com.cakeplatform.api.modules.notification.AdminNotificationType.SUBSCRIPTION_EXPIRED,
+                    "Subscription Expired: " + shop.getBusinessName(),
+                    String.format("Subscription for %s has expired. Shop transitioned to INACTIVE.", shop.getBusinessName()),
+                    com.cakeplatform.api.modules.notification.AdminNotificationPriority.HIGH,
+                    com.cakeplatform.api.modules.notification.AdminNotificationCategory.SUBSCRIPTIONS,
+                    subscription.getId().toString(),
+                    "SUBSCRIPTION",
+                    "/admin/shops/" + shop.getId()
+            );
+        } catch (Exception ignored) {}
     }
 }

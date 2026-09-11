@@ -102,4 +102,25 @@ public class MediaUploadService {
             throw new RuntimeException("File not found " + fileName, ex);
         }
     }
+
+    public boolean deleteFileByUrl(String fileUrl) {
+        if (fileUrl == null || !fileUrl.contains("/uploads/")) {
+            return false;
+        }
+        try {
+            int uploadIndex = fileUrl.indexOf("/uploads/") + "/uploads/".length();
+            String relativePathStr = fileUrl.substring(uploadIndex);
+            if (relativePathStr.contains("?")) {
+                relativePathStr = relativePathStr.substring(0, relativePathStr.indexOf("?"));
+            }
+            Path filePath = this.fileStorageLocation.resolve(relativePathStr).normalize();
+            if (filePath.startsWith(this.fileStorageLocation)) {
+                return Files.deleteIfExists(filePath);
+            }
+        } catch (Exception ignored) {
+            // Best effort file deletion; do not fail transaction
+        }
+        return false;
+    }
 }
+

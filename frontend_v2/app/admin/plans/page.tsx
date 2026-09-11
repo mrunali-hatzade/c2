@@ -190,24 +190,35 @@ export default function AdminPlansPage() {
           }
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl">
           {plans.map((plan) => {
-            const featureList = (plan.features || '')
-              .split(',')
-              .map((f) => f.trim())
-              .filter(Boolean);
+            let featureList: string[] = [];
+            if (plan.features) {
+              try {
+                const parsed = JSON.parse(plan.features);
+                if (Array.isArray(parsed)) {
+                  featureList = parsed.map((item) => String(item).trim()).filter(Boolean);
+                }
+              } catch {
+                featureList = plan.features
+                  .replace(/[\[\]"']/g, '')
+                  .split(',')
+                  .map((f) => f.trim())
+                  .filter(Boolean);
+              }
+            }
 
             return (
               <Card
                 key={plan.id}
-                className={`p-6 flex flex-col justify-between border-slate-200 shadow-soft hover:shadow-card transition-all ${
-                  !plan.isActive ? 'opacity-70 bg-slate-50/70' : ''
+                className={`p-7 rounded-2xl flex flex-col justify-between border-slate-200/90 shadow-soft hover:shadow-card transition-all ${
+                  !plan.isActive ? 'opacity-70 bg-slate-50/70' : 'bg-white'
                 }`}
               >
                 <div>
                   {/* Top Bar */}
                   <div className="flex items-center justify-between">
-                    <h3 className="font-serif font-bold text-lg text-slate-900">
+                    <h3 className="font-serif font-bold text-xl text-slate-900">
                       {plan.name}
                     </h3>
                     <Badge variant={plan.isActive ? 'success' : 'default'} size="sm">
@@ -215,30 +226,30 @@ export default function AdminPlansPage() {
                     </Badge>
                   </div>
 
-                  <p className="text-xs text-slate-500 mt-2 min-h-10 line-clamp-2">
+                  <p className="text-sm text-slate-500 mt-2.5 min-h-[2.5rem] line-clamp-2 leading-relaxed">
                     {plan.description || 'Standard bakery subscription tier.'}
                   </p>
 
                   {/* Price */}
-                  <div className="mt-4 pb-4 border-b border-slate-100">
-                    <p className="text-3xl font-bold font-serif text-slate-900">
+                  <div className="mt-5 pb-5 border-b border-slate-100">
+                    <p className="text-3xl sm:text-4xl font-extrabold font-serif text-slate-900">
                       ₹{plan.price.toLocaleString('en-IN')}
-                      <span className="text-xs font-normal text-slate-500">
-                        {' '}/ {plan.durationDays} days
+                      <span className="text-xs font-normal text-slate-500 font-sans ml-1">
+                        / {plan.durationDays} days
                       </span>
                     </p>
-                    <span className="text-[11px] text-indigo-600 font-medium">
+                    <span className="text-xs text-indigo-600 font-semibold mt-1 inline-block">
                       Currency: {plan.currency || 'INR'}
                     </span>
                   </div>
 
                   {/* Features */}
-                  <div className="mt-4 space-y-2 text-xs text-slate-600">
+                  <div className="mt-5 space-y-3 text-sm text-slate-700">
                     {featureList.length > 0 ? (
                       featureList.map((feature, idx) => (
-                        <div key={idx} className="flex items-start gap-2">
-                          <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                          <span>{feature}</span>
+                        <div key={idx} className="flex items-start gap-2.5">
+                          <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                          <span className="leading-snug">{feature}</span>
                         </div>
                       ))
                     ) : (
@@ -248,12 +259,12 @@ export default function AdminPlansPage() {
                 </div>
 
                 {/* Card Footer Actions */}
-                <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between gap-2">
+                <div className="mt-8 pt-5 border-t border-slate-100 flex items-center justify-between gap-3">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => openEditModal(plan)}
-                    className="gap-1.5 text-xs flex-1"
+                    className="gap-2 text-xs flex-1 py-2"
                   >
                     <Edit2 className="w-3.5 h-3.5" />
                     <span>Edit Tier</span>
@@ -263,7 +274,7 @@ export default function AdminPlansPage() {
                     variant="ghost"
                     size="sm"
                     onClick={() => handleToggleStatus(plan)}
-                    className={`gap-1.5 text-xs ${
+                    className={`gap-1.5 text-xs py-2 ${
                       plan.isActive
                         ? 'text-rose-600 hover:bg-rose-50'
                         : 'text-emerald-600 hover:bg-emerald-50'
@@ -276,6 +287,22 @@ export default function AdminPlansPage() {
               </Card>
             );
           })}
+
+          {/* Quick Add Plan Slot */}
+          <div
+            onClick={openCreateModal}
+            className="rounded-2xl border-2 border-dashed border-slate-200 hover:border-indigo-400 bg-slate-50/50 hover:bg-indigo-50/30 p-7 flex flex-col items-center justify-center text-center cursor-pointer transition-all min-h-[300px] group"
+          >
+            <div className="w-12 h-12 rounded-2xl bg-white group-hover:bg-indigo-600 group-hover:text-white text-slate-400 flex items-center justify-center shadow-xs border border-slate-200 transition-colors mb-4">
+              <Plus className="w-6 h-6" />
+            </div>
+            <h4 className="font-serif font-bold text-base text-slate-800 group-hover:text-indigo-600 transition-colors">
+              Add Another Tier
+            </h4>
+            <p className="text-xs text-slate-400 max-w-xs mt-1.5 leading-relaxed">
+              Create Starter, Growth, or Custom Enterprise plans with tailored feature limits
+            </p>
+          </div>
         </div>
       )}
 

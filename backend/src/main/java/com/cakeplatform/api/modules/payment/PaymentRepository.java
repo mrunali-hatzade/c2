@@ -14,6 +14,7 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     List<Payment> findByShopIdOrderByCreatedAtDesc(Long shopId);
     java.util.Optional<Payment> findByProviderPaymentId(String providerPaymentId);
     java.util.Optional<Payment> findByIdAndShopId(Long id, Long shopId);
+    void deleteByShopId(Long shopId);
 
     @Query("SELECT SUM(p.amount) FROM Payment p WHERE p.status = 'COMPLETED'")
     BigDecimal getTotalRevenue();

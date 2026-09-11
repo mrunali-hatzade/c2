@@ -1,29 +1,39 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
-import { useParams } from 'next/navigation';
-import { Cake, Sparkles, Filter, Search } from 'lucide-react';
+import React, { useEffect, useState, useCallback, Suspense } from 'react';
+import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { storefrontApi } from '@/lib/api/storefront';
 import { Shop } from '@/types/shop';
 import { Product, Category } from '@/types/product';
 import { useCart } from '@/context/CartContext';
 import { StorefrontNavbar } from '@/components/customer/storefront/StorefrontNavbar';
 import { StorefrontBanner } from '@/components/customer/storefront/StorefrontBanner';
-import { ProductCard } from '@/components/customer/storefront/ProductCard';
+import { StorefrontTabNav, StorefrontTab } from '@/components/customer/storefront/StorefrontTabNav';
+import { StorefrontHomeTab } from '@/components/customer/storefront/tabs/StorefrontHomeTab';
+import { StorefrontShopTab } from '@/components/customer/storefront/tabs/StorefrontShopTab';
+import { StorefrontAboutTab } from '@/components/customer/storefront/tabs/StorefrontAboutTab';
+import { StorefrontOffersTab } from '@/components/customer/storefront/tabs/StorefrontOffersTab';
+import { StorefrontCustomCakesTab } from '@/components/customer/storefront/tabs/StorefrontCustomCakesTab';
+import { StorefrontGalleryTab } from '@/components/customer/storefront/tabs/StorefrontGalleryTab';
+import { StorefrontContactTab } from '@/components/customer/storefront/tabs/StorefrontContactTab';
+import { StorefrontTrackOrderTab } from '@/components/customer/storefront/tabs/StorefrontTrackOrderTab';
+import { StorefrontCheckoutTab } from '@/components/customer/storefront/tabs/StorefrontCheckoutTab';
 import { ProductDetailModal } from '@/components/customer/storefront/ProductDetailModal';
 import { CustomCakeInquiryModal } from '@/components/customer/storefront/CustomCakeInquiryModal';
 import { CartDrawer } from '@/components/customer/storefront/CartDrawer';
-import { StorefrontCheckoutModal } from '@/components/customer/storefront/StorefrontCheckoutModal';
+import { SavedCakesDrawer } from '@/components/customer/storefront/SavedCakesDrawer';
+
 import { Footer } from '@/components/common/Footer';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { ErrorState } from '@/components/ui/ErrorState';
-import { EmptyState } from '@/components/ui/EmptyState';
 
-export default function StorefrontPage() {
+function StorefrontContent() {
   const params = useParams();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const shopId = params?.id as string;
 
-  const { isCheckoutOpen, setIsCheckoutOpen } = useCart();
+  
 
   const [shop, setShop] = useState<Shop | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
@@ -31,15 +41,39 @@ export default function StorefrontPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Filter & Search states
-  const [selectedCategoryId, setSelectedCategoryId] = useState<'ALL' | number>('ALL');
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [egglessOnly, setEgglessOnly] = useState<boolean>(false);
+  // Tab State
+  const tabParam = (searchParams?.get('tab') as StorefrontTab) || 'home';
+  const [activeTab, setActiveTab] = useState<StorefrontTab>(tabParam);
+
+  useEffect(() => {
+    if (tabParam && tabParam !== activeTab) {
+      setActiveTab(tabParam);
+    }
+  }, [tabParam, activeTab]);
+
+  const handleTabChange = (newTab: StorefrontTab) => {
+    setActiveTab(newTab);
+    const url = new URL(window.location.href);
+    if (newTab === 'home') {
+      url.searchParams.delete('tab');
+    } else {
+      url.searchParams.set('tab', newTab);
+    }
+    router.replace(url.pathname + url.search, { scroll: false });
+  };
 
   // Product Detail / Customization Modal
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState<boolean>(false);
   const [isCustomInquiryOpen, setIsCustomInquiryOpen] = useState<boolean>(false);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+
+  const handleSearchChange = (query: string) => {
+    setSearchQuery(query);
+    if (query.trim() && activeTab !== 'shop') {
+      handleTabChange('shop');
+    }
+  };
 
   const loadStorefrontData = useCallback(async () => {
     if (!shopId) return;
@@ -66,21 +100,8 @@ export default function StorefrontPage() {
   }, [loadStorefrontData]);
 
   const handleOpenProduct = (product: Product) => {
-    setSelectedProduct(product);
-    setIsDetailModalOpen(true);
+    router.push(`/shop/${shopId}/product/${product.id}`);
   };
-
-  // Filter products by category ID, search query, and eggless preference
-  const filteredProducts = products.filter((p) => {
-    const matchesCategory =
-      selectedCategoryId === 'ALL' || p.categoryId === selectedCategoryId;
-    const matchesSearch =
-      !searchQuery ||
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (p.description && p.description.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchesEggless = !egglessOnly || p.isEggless;
-    return matchesCategory && matchesSearch && matchesEggless;
-  });
 
   if (isLoading) {
     return (
@@ -104,108 +125,93 @@ export default function StorefrontPage() {
   return (
     <div className="min-h-screen flex flex-col bg-brand-cream-light">
       {/* Storefront Header with in-store basket trigger */}
-      <StorefrontNavbar shop={shop} />
+      <StorefrontNavbar
+        shop={shop}
+        searchQuery={searchQuery}
+        onSearchChange={handleSearchChange}
+      />
 
       {/* Bakery Hero Banner */}
       <StorefrontBanner shop={shop} />
 
-      {/* Storefront Catalog Section */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 flex-1 w-full">
-        {/* Filter & Search Bar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 pb-6 border-b border-brand-border/60">
-          <div>
-            <h2 className="text-2xl font-serif font-bold text-brand-espresso">
-              Fresh Bakery Creations
-            </h2>
-            <p className="text-xs text-brand-muted mt-1">
-              Select any cake to personalize message, schedule delivery, and order directly from this kitchen.
-            </p>
-          </div>
+      {/* Bakery Mini-Website 8-Destination Tab Navigation */}
+      <StorefrontTabNav
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        productCount={products.length}
+      />
 
-          <div className="flex items-center gap-3 self-start sm:self-auto">
-            {/* Search within store */}
-            <div className="relative">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-brand-muted" />
-              <input
-                type="text"
-                placeholder="Search this shop's cakes..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 pr-4 py-2 bg-white rounded-full border border-brand-border text-xs text-brand-espresso placeholder:text-brand-muted focus:outline-none focus:ring-2 focus:ring-brand-plum/20 w-56 sm:w-64 shadow-xs"
-              />
-            </div>
-
-            {/* Eggless toggle */}
-            <button
-              onClick={() => setEgglessOnly(!egglessOnly)}
-              className={`px-3.5 py-2 rounded-full border text-xs font-semibold transition-all shrink-0 ${
-                egglessOnly
-                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                  : 'bg-white text-emerald-800 border-emerald-200 hover:bg-emerald-50 shadow-2xs'
-              }`}
-            >
-              🌱 Eggless Only
-            </button>
-
-            {/* Custom Cake Inquiry Button */}
-            <button
-              onClick={() => setIsCustomInquiryOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-brand-plum text-brand-plum hover:bg-brand-plum hover:text-white text-xs font-semibold transition-all shadow-2xs shrink-0"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Request Custom Cake</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Category Filter Pills (rendered only when shop has categories) */}
-        {categories.length > 0 && (
-          <div className="flex items-center gap-2 overflow-x-auto pb-4 mb-8 scrollbar-none max-w-full">
-            <button
-              type="button"
-              onClick={() => setSelectedCategoryId('ALL')}
-              className={`px-4 py-2 rounded-full text-xs font-medium transition-all whitespace-nowrap shrink-0 border ${
-                selectedCategoryId === 'ALL'
-                  ? 'bg-brand-plum text-white border-brand-plum shadow-sm'
-                  : 'bg-white text-brand-espresso border-brand-border/80 hover:bg-brand-blush/60'
-              }`}
-            >
-              All Items
-            </button>
-            {categories.map((cat) => (
-              <button
-                key={cat.id}
-                type="button"
-                onClick={() => setSelectedCategoryId(cat.id)}
-                className={`px-4 py-2 rounded-full text-xs font-medium transition-all whitespace-nowrap shrink-0 border ${
-                  selectedCategoryId === cat.id
-                    ? 'bg-brand-plum text-white border-brand-plum shadow-sm'
-                    : 'bg-white text-brand-espresso border-brand-border/80 hover:bg-brand-blush/60'
-                }`}
-              >
-                {cat.name}
-              </button>
-            ))}
-          </div>
+      {/* Main Tab Content View Router */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 flex-1 w-full">
+        {activeTab === 'home' && (
+          <StorefrontHomeTab
+            shop={shop}
+            products={products}
+            categories={categories}
+            onNavigateTab={handleTabChange}
+            onSelectProduct={handleOpenProduct}
+            onOpenCustomQuote={() => handleTabChange('custom-cakes')}
+          />
         )}
 
-        {/* Products Grid */}
-        {filteredProducts.length === 0 ? (
-          <EmptyState
-            icon={<Cake className="w-7 h-7" />}
-            title="No Cakes Found"
-            description="No items match your selected filters. Try clearing your search or category."
+        {activeTab === 'shop' && (
+          <StorefrontShopTab
+            shop={shop}
+            products={products}
+            categories={categories}
+            searchQuery={searchQuery}
+            onSelectProduct={handleOpenProduct}
+            onOpenCustomQuote={() => handleTabChange('custom-cakes')}
           />
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
-            {filteredProducts.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                onSelect={handleOpenProduct}
-              />
-            ))}
-          </div>
+        )}
+
+        {activeTab === 'about' && (
+          <StorefrontAboutTab
+            shop={shop}
+            onNavigateTab={handleTabChange}
+          />
+        )}
+
+        {activeTab === 'offers' && (
+          <StorefrontOffersTab
+            shop={shop}
+            onNavigateTab={handleTabChange}
+          />
+        )}
+
+        {activeTab === 'custom-cakes' && (
+          <StorefrontCustomCakesTab
+            shop={shop}
+          />
+        )}
+
+        {activeTab === 'gallery' && (
+          <StorefrontGalleryTab
+            shop={shop}
+            products={products}
+            categories={categories}
+            onSelectProduct={handleOpenProduct}
+            onNavigateTab={handleTabChange}
+          />
+        )}
+
+        {activeTab === 'contact' && (
+          <StorefrontContactTab
+            shop={shop}
+          />
+        )}
+
+        {activeTab === 'track' && (
+          <StorefrontTrackOrderTab
+            shop={shop}
+          />
+        )}
+
+        {activeTab === 'checkout' && (
+          <StorefrontCheckoutTab
+            shop={shop}
+            onNavigateTab={handleTabChange}
+          />
         )}
       </main>
 
@@ -215,7 +221,10 @@ export default function StorefrontPage() {
         onClose={() => setIsDetailModalOpen(false)}
         product={selectedProduct}
         shop={shop}
-        onOpenCustomQuote={() => setIsCustomInquiryOpen(true)}
+        onOpenCustomQuote={() => {
+          setIsDetailModalOpen(false);
+          handleTabChange('custom-cakes');
+        }}
       />
 
       {/* Bespoke Custom Cake Inquiry Modal */}
@@ -228,14 +237,24 @@ export default function StorefrontPage() {
       {/* In-Store Cart Drawer */}
       <CartDrawer />
 
-      {/* In-Store Checkout Modal (Never redirects to marketplace) */}
-      <StorefrontCheckoutModal
-        isOpen={isCheckoutOpen}
-        onClose={() => setIsCheckoutOpen(false)}
-        shop={shop}
-      />
+      {/* Saved Cakes Wishlist Drawer */}
+      <SavedCakesDrawer />
 
       <Footer />
     </div>
+  );
+}
+
+export default function StorefrontPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-brand-cream-light">
+          <LoadingState message="Loading bakery boutique storefront..." />
+        </div>
+      }
+    >
+      <StorefrontContent />
+    </Suspense>
   );
 }

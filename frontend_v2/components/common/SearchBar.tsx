@@ -103,47 +103,48 @@ export const SearchBar: React.FC<SearchBarProps> = ({
     <form
       onSubmit={handleSubmit}
       className={cn(
-        'w-full bg-white rounded-full p-2 border border-brand-border shadow-soft flex flex-col sm:flex-row items-center gap-2 relative',
+        'w-full bg-white rounded-2xl sm:rounded-full p-2 border border-brand-border/80 shadow-elevated flex flex-col sm:flex-row items-center gap-2 relative transition-shadow hover:shadow-lg focus-within:border-brand-plum/40 focus-within:ring-2 focus-within:ring-brand-plum/10',
         className
       )}
     >
       {/* Search Input */}
-      <div className="flex-1 flex items-center px-4 gap-2.5 w-full">
-        <Search className="w-4 h-4 text-brand-muted shrink-0" />
+      <div className="flex-1 flex items-center px-3 sm:px-4 gap-2.5 w-full">
+        <Search className="w-4 h-4 text-brand-plum shrink-0" />
         <input
           type="text"
           placeholder="Search by cake style, flavor, or bakery name..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full text-xs sm:text-sm text-brand-espresso placeholder:text-brand-muted/60 bg-transparent focus:outline-none"
+          className="w-full text-xs sm:text-sm text-brand-espresso placeholder:text-brand-muted/70 bg-transparent focus:outline-none"
         />
         {search && (
           <button
             type="button"
             onClick={() => setSearch('')}
-            className="text-brand-muted hover:text-brand-espresso p-1"
+            className="text-brand-muted hover:text-brand-espresso p-1 transition-colors rounded-full hover:bg-brand-cream/50"
+            title="Clear search"
           >
             <X className="w-3.5 h-3.5" />
           </button>
         )}
       </div>
 
-      <div className="hidden sm:block w-px h-6 bg-brand-border" />
+      <div className="hidden sm:block w-px h-7 bg-brand-border/80" />
 
       {/* Location Input with Indian Places & Near by Me Dropdown */}
       <div ref={locationRef} className="relative w-full sm:w-64">
-        <div className="flex items-center px-3 gap-2 w-full">
+        <div className="flex items-center px-3 sm:px-3.5 gap-2 w-full">
           <MapPin className="w-4 h-4 text-brand-plum shrink-0" />
           <input
             type="text"
-            placeholder="Indian place or Near by Me"
+            placeholder="City, area or Near by Me"
             value={location}
             onFocus={() => setIsCityDropdownOpen(true)}
             onChange={(e) => {
               setLocation(e.target.value);
               setIsCityDropdownOpen(true);
             }}
-            className="w-full text-xs sm:text-sm text-brand-espresso placeholder:text-brand-muted/60 bg-transparent focus:outline-none"
+            className="w-full text-xs sm:text-sm text-brand-espresso placeholder:text-brand-muted/70 bg-transparent focus:outline-none"
           />
 
           {/* Quick GPS Locate Button */}
@@ -152,7 +153,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
             title="Use current location (Near by Me)"
             onClick={handleSelectNearbyMe}
             className={cn(
-              'p-1 text-brand-muted hover:text-brand-plum transition-colors shrink-0',
+              'p-1 text-brand-muted hover:text-brand-plum transition-colors shrink-0 rounded-md hover:bg-brand-blush/60',
               isLocating && 'animate-spin text-brand-plum'
             )}
           >
@@ -163,7 +164,8 @@ export const SearchBar: React.FC<SearchBarProps> = ({
             <button
               type="button"
               onClick={handleClearLocation}
-              className="text-brand-muted hover:text-brand-espresso p-1 shrink-0"
+              className="text-brand-muted hover:text-brand-espresso p-1 shrink-0 rounded-full hover:bg-brand-cream/50"
+              title="Clear location"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -173,22 +175,22 @@ export const SearchBar: React.FC<SearchBarProps> = ({
               onClick={() => setIsCityDropdownOpen(!isCityDropdownOpen)}
               className="text-brand-muted hover:text-brand-espresso p-1 shrink-0"
             >
-              <ChevronDown className="w-3.5 h-3.5" />
+              <ChevronDown className={cn("w-3.5 h-3.5 transition-transform duration-200", isCityDropdownOpen && "rotate-180")} />
             </button>
           )}
         </div>
 
         {/* Quick Indian Places Dropdown Menu */}
         {isCityDropdownOpen && (
-          <div className="absolute left-0 sm:right-0 top-full mt-3 w-80 bg-white rounded-2xl shadow-elevated border border-brand-border p-2.5 z-50 text-left">
+          <div className="absolute left-0 sm:right-0 top-full mt-3 w-full sm:w-84 bg-white rounded-2xl shadow-elevated border border-brand-border/80 p-2.5 z-50 text-left animate-in fade-in slide-in-from-top-2 duration-150">
             {/* Near by Me Hero Action */}
             <button
               type="button"
               onClick={handleSelectNearbyMe}
-              className="w-full px-3 py-2.5 rounded-xl bg-brand-blush/60 hover:bg-brand-blush text-brand-plum border border-brand-blush-border transition-all flex items-center justify-between mb-2 group"
+              className="w-full px-3 py-2.5 rounded-xl bg-brand-blush/70 hover:bg-brand-blush text-brand-plum border border-brand-blush-border transition-all flex items-center justify-between mb-2 group shadow-2xs active:scale-[0.99]"
             >
               <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-full bg-brand-plum text-white flex items-center justify-center shrink-0 shadow-xs">
+                <div className="w-7 h-7 rounded-xl bg-brand-plum text-white flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
                   <Navigation className={cn('w-3.5 h-3.5', isLocating ? 'animate-spin' : 'animate-pulse')} />
                 </div>
                 <div className="text-left">
@@ -196,20 +198,21 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                     Near by Me
                   </span>
                   <span className="block text-[10px] text-brand-muted">
-                    Find bakeries nearest to your location
+                    Find bakeries closest to your GPS location
                   </span>
                 </div>
               </div>
-              <span className="text-[10px] font-semibold bg-white/80 px-2 py-0.5 rounded-md text-brand-plum">
+              <span className="text-[10px] font-bold bg-white/90 px-2 py-0.5 rounded-full text-brand-plum border border-brand-plum/10">
                 GPS
               </span>
             </button>
 
-            <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-brand-muted border-b border-brand-border/60">
-              Popular Indian Places & Cities
+            <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-brand-muted border-b border-brand-border/50 flex items-center justify-between">
+              <span>Popular Indian Cities & Areas</span>
+              <span className="text-[9px] font-normal text-brand-muted/70">Tap to select</span>
             </div>
 
-            <div className="max-h-60 overflow-y-auto divide-y divide-brand-border/40 py-1">
+            <div className="max-h-60 overflow-y-auto divide-y divide-brand-border/30 py-1 scrollbar-thin">
               {filteredPlaces
                 .filter((p) => !p.isNearby)
                 .map((place) => (
@@ -217,14 +220,14 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                     key={place.label}
                     type="button"
                     onClick={() => handleSelectPlace(place)}
-                    className="w-full px-3 py-2 text-left text-xs text-brand-espresso hover:bg-brand-blush/60 rounded-xl transition-colors flex items-center justify-between group"
+                    className="w-full px-3 py-2 text-left text-xs text-brand-espresso hover:bg-brand-cream/60 rounded-xl transition-colors flex items-center justify-between group"
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
                       <MapPin className="w-3.5 h-3.5 text-brand-plum group-hover:scale-110 transition-transform shrink-0" />
-                      <span className="font-semibold">{place.label}</span>
+                      <span className="font-semibold truncate">{place.label}</span>
                     </div>
                     {place.state && (
-                      <span className="text-[10px] text-brand-muted font-medium ml-2 shrink-0">
+                      <span className="text-[10px] text-brand-muted font-medium ml-2 shrink-0 bg-brand-cream px-1.5 py-0.5 rounded-md">
                         {place.state}
                       </span>
                     )}
@@ -232,8 +235,8 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                 ))}
 
               {filteredPlaces.filter((p) => !p.isNearby).length === 0 && (
-                <div className="px-3 py-3 text-center text-xs text-brand-muted">
-                  No matching Indian place found. Press enter to search for &quot;{location}&quot;
+                <div className="px-3 py-4 text-center text-xs text-brand-muted">
+                  No matching place found. Press enter or &ldquo;Find Bakeries&rdquo; to search for &ldquo;{location}&rdquo;
                 </div>
               )}
             </div>
@@ -242,9 +245,14 @@ export const SearchBar: React.FC<SearchBarProps> = ({
       </div>
 
       {/* Action Button */}
-      <div className="flex items-center gap-1.5 w-full sm:w-auto px-2 sm:px-0">
-        <Button type="submit" size="sm" className="w-full sm:w-auto">
-          Find Cakes
+      <div className="flex items-center gap-1.5 w-full sm:w-auto px-1 sm:px-0">
+        <Button
+          type="submit"
+          size="sm"
+          className="w-full sm:w-auto rounded-xl sm:rounded-full px-5 py-2.5 h-10 font-bold shadow-sm"
+        >
+          <Search className="w-3.5 h-3.5 mr-1.5 sm:hidden" />
+          Find Bakeries
         </Button>
       </div>
     </form>

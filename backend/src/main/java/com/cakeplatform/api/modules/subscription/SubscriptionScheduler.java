@@ -23,6 +23,7 @@ public class SubscriptionScheduler {
     private final SubscriptionRepository subscriptionRepository;
     private final SubscriptionService subscriptionService;
     private final NotificationService notificationService;
+    private final com.cakeplatform.api.modules.notification.AdminNotificationService adminNotificationService;
 
     @Scheduled(cron = "0 0 0 * * ?")
     public void processSubscriptionExpiries() {
@@ -63,6 +64,20 @@ public class SubscriptionScheduler {
                 sub.getId().toString(),
                 true
         );
+
+        try {
+            adminNotificationService.dispatchAdminNotification(
+                    com.cakeplatform.api.modules.notification.AdminNotificationType.SUBSCRIPTION_EXPIRING,
+                    "Subscription Expiring: " + shop.getBusinessName(),
+                    String.format("Subscription for %s is expiring in %d day(s).", shop.getBusinessName(), daysLeft),
+                    com.cakeplatform.api.modules.notification.AdminNotificationPriority.HIGH,
+                    com.cakeplatform.api.modules.notification.AdminNotificationCategory.SUBSCRIPTIONS,
+                    sub.getId() + "-expiring-" + daysLeft,
+                    "SUBSCRIPTION",
+                    "/admin/shops/" + shop.getId()
+            );
+        } catch (Exception ignored) {}
+
         log.info("Sent expiring notification to Shop ID {}", shop.getId());
     }
 }

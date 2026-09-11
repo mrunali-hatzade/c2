@@ -98,9 +98,18 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     }
 
     if (!response.ok) {
-      const errorMessage =
-        (typeof responseData === 'object' && responseData !== null && (responseData.message || responseData.error)) ||
-        `Request failed with status ${response.status}`;
+      let errorMessage = `Request failed with status ${response.status}`;
+      if (typeof responseData === 'object' && responseData !== null) {
+        if (Array.isArray(responseData.errors) && responseData.errors.length > 0) {
+          errorMessage = responseData.errors
+            .map((e: any) => e.defaultMessage || e.message || String(e))
+            .join(', ');
+        } else if (responseData.message) {
+          errorMessage = responseData.message;
+        } else if (responseData.error && responseData.error !== 'Bad Request') {
+          errorMessage = responseData.error;
+        }
+      }
 
       // Auto-logout on token expiry or unauthorized access
       if (response.status === 401) {

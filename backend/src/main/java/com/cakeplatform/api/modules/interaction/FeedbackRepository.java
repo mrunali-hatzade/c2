@@ -10,4 +10,5 @@ import java.util.Optional;
 public interface FeedbackRepository extends JpaRepository<Feedback, Long> {
     List<Feedback> findByShopIdAndDeletedAtIsNullOrderByCreatedAtDesc(Long shopId);
     Optional<Feedback> findByIdAndShopId(Long id, Long shopId);
+    void deleteByShopId(Long shopId);
 }

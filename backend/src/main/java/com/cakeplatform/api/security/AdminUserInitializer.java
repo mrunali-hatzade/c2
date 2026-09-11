@@ -40,9 +40,10 @@ public class AdminUserInitializer implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
-        // 1. Initialize default admin if not present
-        if (userRepository.findByEmail(adminEmail).isEmpty() && userRepository.findByRole(UserRole.ADMIN).isEmpty()) {
-            log.info("No ADMIN user found in database. Bootstrapping platform administrator: {}", adminEmail);
+        // 1. Initialize default admin if not present, or elevate to ADMIN role
+        User adminUser = userRepository.findByEmail(adminEmail).orElse(null);
+        if (adminUser == null) {
+            log.info("No ADMIN user found for {}. Bootstrapping platform administrator.", adminEmail);
             User admin = new User();
             admin.setEmail(adminEmail);
             admin.setPasswordHash(passwordEncoder.encode(adminPassword));
@@ -51,6 +52,12 @@ public class AdminUserInitializer implements ApplicationRunner {
             admin.setStatus(UserStatus.ACTIVE);
             userRepository.save(admin);
             log.info("Platform administrator account initialized successfully.");
+        } else if (adminUser.getRole() != UserRole.ADMIN) {
+            log.info("Elevating existing user {} to ADMIN role.", adminEmail);
+            adminUser.setRole(UserRole.ADMIN);
+            adminUser.setPasswordHash(passwordEncoder.encode(adminPassword));
+            userRepository.save(adminUser);
+            log.info("Platform administrator role and credentials synchronized.");
         }
 
         // 2. Initialize frontend demo admin (admin@cakestore.com / admin123) for Quick Test Autofill
@@ -98,6 +105,47 @@ public class AdminUserInitializer implements ApplicationRunner {
             subscription.setExpiryDate(LocalDateTime.now().plusMonths(1));
             subscriptionRepository.save(subscription);
             log.info("Demo bakery owner and shop initialized successfully.");
+        }
+
+        // 4. Initialize or update user's own account (mrunalithatzade20@gmail.com / password123)
+        User personalUser = userRepository.findByEmail("mrunalithatzade20@gmail.com").orElse(null);
+        if (personalUser == null) {
+            log.info("Bootstrapping personal owner account: mrunalithatzade20@gmail.com");
+            User newUser = new User();
+            newUser.setEmail("mrunalithatzade20@gmail.com");
+            newUser.setPasswordHash(passwordEncoder.encode("password123"));
+            newUser.setFullName("Mrunali");
+            newUser.setMobile("9876543210");
+            newUser.setRole(UserRole.SHOP_OWNER);
+            newUser.setStatus(UserStatus.ACTIVE);
+            User savedOwner = userRepository.save(newUser);
+
+            Shop shop = new Shop();
+            shop.setOwner(savedOwner);
+            shop.setBusinessName("Mrunali's Artisanal Bakery");
+            shop.setEmail("mrunalithatzade20@gmail.com");
+            shop.setPhone("9876543210");
+            shop.setDescription("Handcrafted custom cakes & bakery delicacies");
+            shop.setCity("Pune");
+            shop.setState("Maharashtra");
+            shop.setPincode("411001");
+            shop.setStatus(ShopStatus.ACTIVE);
+            shop.setVerificationStatus(VerificationStatus.VERIFIED);
+            Shop savedShop = shopRepository.save(shop);
+
+            Subscription subscription = new Subscription();
+            subscription.setShop(savedShop);
+            subscription.setStatus(SubscriptionStatus.ACTIVE);
+            subscription.setAmount(new BigDecimal("999.00"));
+            subscription.setStartDate(LocalDateTime.now());
+            subscription.setExpiryDate(LocalDateTime.now().plusMonths(1));
+            subscriptionRepository.save(subscription);
+            log.info("Personal bakery account initialized successfully.");
+        } else {
+            personalUser.setPasswordHash(passwordEncoder.encode("password123"));
+            personalUser.setStatus(UserStatus.ACTIVE);
+            userRepository.save(personalUser);
+            log.info("Personal bakery account password refreshed to 'password123'.");
         }
     }
 }

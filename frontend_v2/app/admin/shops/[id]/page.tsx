@@ -4,8 +4,10 @@ import React, { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import {
-  ArrowLeft,
+  TrendingUp,
   Store,
+  ExternalLink,
+  ArrowLeft,
   ShieldCheck,
   ShieldAlert,
   Clock,
@@ -21,7 +23,6 @@ import {
   Activity,
   AlertTriangle,
   RefreshCw,
-  ExternalLink,
   Ban,
   FileCheck,
 } from 'lucide-react';
@@ -66,12 +67,12 @@ export default function AdminShopDetailPage() {
       const data = await getShopDetails(shopId);
       setDetails(data);
     } catch (err: any) {
-      toast.error(err.message || 'Failed to fetch bakery dossier');
+      toast.error(err.message || 'Failed to fetch bakery details');
     } finally {
       setIsLoading(false);
       setRefreshing(false);
     }
-  }, [shopId, toast]);
+  }, [shopId]);
 
   useEffect(() => {
     loadShop();
@@ -131,7 +132,7 @@ export default function AdminShopDetailPage() {
     try {
       await updateShopVerification(shopId, action, reason?.trim());
       const newStatus = action === 'APPROVE' ? 'VERIFIED' : 'REJECTED';
-      toast.success(`Bakery #${shopId} KYC compliance marked as ${newStatus}`);
+      toast.success(`Bakery #${shopId} verification status marked as ${newStatus}`);
       setIsRejectKycModalOpen(false);
       setKycRejectionReason('');
       setKycRejectionError(null);
@@ -151,10 +152,10 @@ export default function AdminShopDetailPage() {
           activityLogs: [
             {
               id: Date.now(),
-              action: action === 'APPROVE' ? 'KYC_VERIFIED' : 'KYC_REJECTED',
+              action: action === 'APPROVE' ? 'VERIFIED' : 'REJECTED',
               details: action === 'APPROVE'
-                ? 'Admin verified bakery KYC compliance documents'
-                : `Admin rejected KYC: ${reason?.trim()}`,
+                ? 'Admin approved bakery verification documents'
+                : `Admin rejected verification: ${reason?.trim()}`,
               createdAt: new Date().toISOString(),
             },
             ...(details.activityLogs || []),
@@ -169,14 +170,14 @@ export default function AdminShopDetailPage() {
   };
 
   if (isLoading) {
-    return <LoadingState message="Inspecting bakery dossier & compliance logs..." />;
+    return <LoadingState message="Loading bakery verification details..." />;
   }
 
   if (!details) {
     return (
       <div className="text-center py-16 space-y-4">
         <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto" />
-        <h2 className="text-xl font-bold text-slate-800">Bakery Dossier Not Found</h2>
+        <h2 className="text-xl font-bold text-slate-800">Bakery Verification Record Not Found</h2>
         <p className="text-xs text-slate-500">The requested bakery tenant ID could not be loaded.</p>
         <Link href="/admin/shops">
           <Button variant="outline" size="sm">Back to Bakery Directory</Button>
@@ -203,7 +204,7 @@ export default function AdminShopDetailPage() {
       return (
         <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
           <ShieldCheck className="w-3.5 h-3.5" />
-          <span>KYC Verified</span>
+          <span>Verified</span>
         </span>
       );
     }
@@ -211,14 +212,14 @@ export default function AdminShopDetailPage() {
       return (
         <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200">
           <ShieldAlert className="w-3.5 h-3.5" />
-          <span>KYC Rejected</span>
+          <span>Rejected</span>
         </span>
       );
     }
     return (
       <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
         <Clock className="w-3.5 h-3.5" />
-        <span>KYC Under Review</span>
+        <span>Under Review</span>
       </span>
     );
   };
@@ -235,7 +236,14 @@ export default function AdminShopDetailPage() {
           <span>Back to Bakery Directory</span>
         </Link>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
+          <Link href={`/shop/${shop.id}`} target="_blank" rel="noopener noreferrer">
+            <Button variant="outline" size="sm" className="gap-1.5 border-indigo-200 text-indigo-600 hover:bg-indigo-50">
+              <Store className="w-4 h-4" />
+              <span>View Storefront</span>
+              <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+            </Button>
+          </Link>
           <Button
             variant="secondary"
             size="sm"
@@ -249,7 +257,7 @@ export default function AdminShopDetailPage() {
         </div>
       </div>
 
-      {/* Main Dossier Header Banner */}
+      {/* Main Details Header Banner */}
       <Card className="p-6 border-slate-200 shadow-soft">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex items-start gap-4">
@@ -350,7 +358,7 @@ export default function AdminShopDetailPage() {
             {shop.fssaiRegistration || 'Not Submitted'}
           </p>
           <span className="text-xs text-purple-600 mt-1 block">
-            {shop.fssaiRegistration ? 'License Registered' : 'Missing KYC Document'}
+            {shop.fssaiRegistration ? 'License Registered' : 'Missing Verification Document'}
           </span>
         </Card>
 
@@ -376,7 +384,7 @@ export default function AdminShopDetailPage() {
             <div className="flex items-center gap-2">
               <FileText className="w-4 h-4 text-indigo-600" />
               <h3 className="font-serif font-bold text-base text-slate-900">
-                Bakery KYC & Compliance Dossier
+                Bakery Business & Verification Details
               </h3>
             </div>
             {getVerificationBadge(shop.verificationStatus)}
@@ -429,15 +437,15 @@ export default function AdminShopDetailPage() {
                 <span className="text-[10px] font-semibold text-emerald-600">Compliance</span>
               </div>
               <p className="text-base font-bold font-mono text-indigo-950">
-                {shop.fssaiRegistration || 'MISSING_KYC_DOC'}
+                {shop.fssaiRegistration || 'NOT_SUBMITTED'}
               </p>
             </div>
 
-            {/* B3: Submitted KYC Documents Section */}
+            {/* B3: Submitted Verification Documents Section */}
             <div className="pt-2 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="font-bold text-slate-700 text-xs uppercase tracking-wider">
-                  Submitted KYC Documents ({businessDocuments.length})
+                  Submitted Verification Documents ({businessDocuments.length})
                 </span>
               </div>
 
@@ -501,7 +509,7 @@ export default function AdminShopDetailPage() {
                 className="w-full sm:w-auto flex-1 bg-emerald-600 hover:bg-emerald-700 border-emerald-700 gap-1.5"
               >
                 <CheckCircle2 className="w-4 h-4" />
-                <span>{shop.verificationStatus === 'VERIFIED' ? 'Verified' : 'Approve KYC'}</span>
+                <span>{shop.verificationStatus === 'VERIFIED' ? 'Verified' : 'Verify Bakery'}</span>
               </Button>
 
               <Button
@@ -512,7 +520,7 @@ export default function AdminShopDetailPage() {
                 className="w-full sm:w-auto flex-1 gap-1.5"
               >
                 <XCircle className="w-4 h-4" />
-                <span>Reject KYC</span>
+                <span>Reject Application</span>
               </Button>
             </div>
           </div>
@@ -520,36 +528,113 @@ export default function AdminShopDetailPage() {
 
         {/* Right Column: Subscriptions & Activity Log */}
         <div className="space-y-6">
-          {/* Subscriptions Card */}
+          {/* Bakery Business Performance Card */}
           <Card className="p-6 border-slate-200/80 shadow-soft">
-            <div className="flex items-center gap-2 pb-3 border-b border-slate-100 mb-4">
-              <CreditCard className="w-4 h-4 text-purple-600" />
-              <h3 className="font-serif font-bold text-base text-slate-900">
-                Subscription & Invoicing
-              </h3>
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-emerald-600" />
+                <h3 className="font-serif font-bold text-base text-slate-900">
+                  Bakery Performance
+                </h3>
+              </div>
+              <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700">
+                Order Metrics
+              </span>
             </div>
 
-            {subscriptions.length === 0 ? (
-              <p className="text-xs text-slate-500 italic">No subscription history recorded.</p>
-            ) : (
-              <div className="space-y-3">
-                {subscriptions.map((sub) => (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs mb-4">
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                <span className="text-[10px] text-slate-400 font-semibold uppercase block">Bakery Sales / GMV</span>
+                <p className="text-base font-bold text-slate-900 mt-0.5">
+                  ₹{(details.totalRevenue ?? 0).toLocaleString('en-IN')}
+                </p>
+              </div>
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                <span className="text-[10px] text-slate-400 font-semibold uppercase block">This Month</span>
+                <p className="text-base font-bold text-slate-900 mt-0.5">
+                  ₹{(details.monthlyRevenue ?? 0).toLocaleString('en-IN')}
+                </p>
+              </div>
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                <span className="text-[10px] text-slate-400 font-semibold uppercase block">This Week</span>
+                <p className="text-base font-bold text-slate-900 mt-0.5">
+                  ₹{(details.weeklyRevenue ?? 0).toLocaleString('en-IN')}
+                </p>
+              </div>
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                <span className="text-[10px] text-slate-400 font-semibold uppercase block">Total Orders</span>
+                <p className="text-base font-bold text-slate-900 mt-0.5">{details.totalOrders}</p>
+              </div>
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                <span className="text-[10px] text-slate-400 font-semibold uppercase block">Completed</span>
+                <p className="text-base font-bold text-emerald-600 mt-0.5">
+                  {details.completedOrders ?? 0}
+                </p>
+              </div>
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                <span className="text-[10px] text-slate-400 font-semibold uppercase block">Avg Order Value</span>
+                <p className="text-base font-bold text-indigo-600 mt-0.5">
+                  ₹{details.totalOrders > 0 ? Math.round((details.totalRevenue ?? 0) / details.totalOrders) : 0}
+                </p>
+              </div>
+            </div>
+            <p className="text-[11px] text-slate-400 italic">
+              Authoritative order GMV from backend. Zero platform commission.
+            </p>
+          </Card>
+
+          {/* Subscription Information Card */}
+          <Card className="p-6 border-slate-200/80 shadow-soft">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+              <div className="flex items-center gap-2">
+                <CreditCard className="w-4 h-4 text-purple-600" />
+                <h3 className="font-serif font-bold text-base text-slate-900">
+                  Subscription Plan
+                </h3>
+              </div>
+              <Badge variant={subscriptions[0]?.status === 'ACTIVE' ? 'success' : 'default'} size="sm">
+                {subscriptions[0]?.status || 'UNSUBSCRIBED'}
+              </Badge>
+            </div>
+
+            <div className="p-4 rounded-xl bg-purple-50/40 border border-purple-100 space-y-3 text-xs mb-4">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-slate-800 text-sm">
+                  {subscriptions[0]?.planName || 'No Active Plan'}
+                </span>
+                <span className="font-extrabold text-purple-700 text-sm">
+                  {subscriptions[0]?.amount ? `₹${subscriptions[0].amount} / billing cycle` : '—'}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-500 pt-1 border-t border-purple-100/60">
+                <div>
+                  <span className="text-slate-400 block font-medium">Start Date</span>
+                  <span className="font-semibold text-slate-700">
+                    {subscriptions[0]?.startDate || '—'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block font-medium">Renewal / Expiry</span>
+                  <span className="font-semibold text-slate-700">
+                    {subscriptions[0]?.endDate || '—'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {subscriptions.length > 1 && (
+              <div className="space-y-2">
+                <span className="text-[10px] uppercase font-bold text-slate-400">Past Billing Cycles</span>
+                {subscriptions.slice(1).map((sub) => (
                   <div
                     key={sub.id}
-                    className="p-3 rounded-xl border border-slate-100 bg-slate-50/60 flex items-center justify-between text-xs"
+                    className="p-2.5 rounded-lg border border-slate-100 bg-slate-50/60 flex items-center justify-between text-xs"
                   >
                     <div>
-                      <p className="font-bold text-slate-900">{sub.planName}</p>
-                      <p className="text-[11px] text-slate-400">
-                        {sub.startDate} to {sub.endDate}
-                      </p>
+                      <p className="font-semibold text-slate-800">{sub.planName}</p>
+                      <p className="text-[10px] text-slate-400">{sub.startDate} - {sub.endDate}</p>
                     </div>
-                    <div className="text-right">
-                      <p className="font-bold text-slate-900">₹{sub.amount}</p>
-                      <Badge variant="success" size="sm">
-                        {sub.status || 'Active'}
-                      </Badge>
-                    </div>
+                    <span className="font-bold text-slate-700">₹{sub.amount}</span>
                   </div>
                 ))}
               </div>
@@ -665,8 +750,8 @@ export default function AdminShopDetailPage() {
           setKycRejectionReason('');
           setKycRejectionError(null);
         }}
-        title="Reject KYC Compliance Documents"
-        description="Notify the bakery owner why their compliance dossier requires correction."
+        title="Reject Verification Documents"
+        description="Notify the bakery owner why their verification requires correction."
       >
         <div className="space-y-4">
           <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-800 flex items-start gap-2.5">

@@ -57,6 +57,10 @@ public class StageDCouponAndDiscountTest {
     private CustomCakeRequestRepository customCakeRequestRepository;
     @Mock
     private ProductCategoryRepository categoryRepository;
+    @Mock
+    private com.cakeplatform.api.modules.notification.AdminNotificationService adminNotificationService;
+    @Mock
+    private ShopDeliverySlotRepository deliverySlotRepository;
 
     private OwnerCouponController ownerCouponController;
     private CustomerStorefrontService storefrontService;
@@ -102,8 +106,10 @@ public class StageDCouponAndDiscountTest {
                 orderRepository,
                 couponRepository,
                 notificationService,
+                adminNotificationService,
                 customCakeRequestRepository,
-                categoryRepository
+                categoryRepository,
+                deliverySlotRepository
         );
 
         analyticsService = new AnalyticsService(orderRepository, couponRepository, shopAccessValidator);

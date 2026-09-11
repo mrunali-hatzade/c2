@@ -22,24 +22,7 @@ import { Textarea } from '@/components/ui/Textarea';
 import { Select } from '@/components/ui/Select';
 import { useToast } from '@/components/common/Toast';
 
-const INITIAL_BROADCASTS: SentBroadcastRecord[] = [
-  {
-    id: 'bcast-1',
-    title: 'Platform Maintenance Notice',
-    message: 'CakeStore infrastructure will undergo automated database indexing this Sunday at 2:00 AM IST for approximately 15 minutes. Storefront checkout will remain operational.',
-    target: 'All Bakery Owners',
-    sentAt: '2026-09-02T14:30:00Z',
-    recipientCount: 18,
-  },
-  {
-    id: 'bcast-2',
-    title: 'FSSAI License Verification Mandate',
-    message: 'Please ensure your valid FSSAI registration certificate is uploaded in your Store Settings to maintain active marketplace search placement.',
-    target: 'All Bakery Owners',
-    sentAt: '2026-08-20T10:00:00Z',
-    recipientCount: 16,
-  },
-];
+const INITIAL_BROADCASTS: SentBroadcastRecord[] = [];
 
 export default function AdminMessagesPage() {
   const [broadcasts, setBroadcasts] = useState<SentBroadcastRecord[]>([]);

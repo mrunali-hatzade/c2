@@ -2,102 +2,228 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { Cake, Plus, Sparkles, Clock } from 'lucide-react';
+import { Heart, Star, ShoppingBag, SlidersHorizontal, Check } from 'lucide-react';
 import { Product } from '@/types/product';
-import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
+import { Shop } from '@/types/shop';
+import { useCart } from '@/context/CartContext';
+import { useToast } from '@/components/common/Toast';
+
+import { useFavorites } from '@/context/FavoritesContext';
 
 interface ProductCardProps {
   product: Product;
+  shop?: Shop;
   onSelect: (product: Product) => void;
 }
 
 const FALLBACK_CAKE = 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=800&q=80';
 
-export const ProductCard: React.FC<ProductCardProps> = ({ product, onSelect }) => {
+// Helper to generate flavor descriptor chips from product information
+function getFlavorChips(product: Product): string[] {
+  const chips: string[] = [];
+  const text = `${product.name} ${product.description || ''} ${product.category || ''}`.toLowerCase();
+
+  if (text.includes('chocolate') || text.includes('truffle') || text.includes('fudge')) {
+    chips.push('Belgian Cocoa');
+  }
+  if (text.includes('red velvet') || text.includes('velvet')) {
+    chips.push('Cream Cheese');
+  }
+  if (text.includes('fruit') || text.includes('mango') || text.includes('berry') || text.includes('strawberry')) {
+    chips.push('Fresh Fruits');
+  }
+  if (text.includes('vanilla') || text.includes('butterscotch') || text.includes('caramel')) {
+    chips.push('Rich Caramel');
+  }
+  if (text.includes('biscoff') || text.includes('lotus') || text.includes('cookie')) {
+    chips.push('Lotus Biscoff');
+  }
+  if (text.includes('cheese') || text.includes('cheesecake')) {
+    chips.push('Philadelphia Style');
+  }
+
+  // Fallbacks if no specific flavor keywords matched
+  if (chips.length === 0) {
+    if (product.isEggless) chips.push('100% Eggless');
+    chips.push('Artisan Baked');
+  } else if (chips.length === 1) {
+    chips.push('Moist Sponge');
+  }
+
+  return chips.slice(0, 2);
+}
+
+export const ProductCard: React.FC<ProductCardProps> = ({ product, shop, onSelect }) => {
   const [imgSrc, setImgSrc] = useState(product.imageUrl || FALLBACK_CAKE);
+  const [isAdded, setIsAdded] = useState(false);
+
+  const { isFavorite, toggleFavorite } = useFavorites();
+  const isFav = isFavorite(product.id);
+
+  const { addItem } = useCart();
+  const toast = useToast();
+
+  const flavorChips = getFlavorChips(product);
+
+  const handleQuickAdd = (e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    const result = addItem({
+      productId: product.id,
+      name: product.name,
+      price: product.price,
+      quantity: 1,
+      imageUrl: product.imageUrl || FALLBACK_CAKE,
+      isEggless: product.isEggless,
+      shopId: shop?.id || product.shopId,
+      shopName: shop?.businessName || 'Bakery Boutique',
+    });
+
+    if (result.conflict) {
+      toast.error('Cart contains items from another bakery. Clear cart first to order from here.');
+      return;
+    }
+
+    setIsAdded(true);
+    toast.success(`Added "${product.name}" to basket!`);
+    setTimeout(() => setIsAdded(false), 1800);
+  };
+
+  const handleToggleFavorite = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    toggleFavorite(product, shop?.id || product.shopId, shop?.businessName || 'Bakery Boutique');
+  };
 
   return (
-    <Card hoverEffect className="flex flex-col overflow-hidden bg-white border-brand-border/80 h-full group p-0 rounded-2xl">
-      {/* Product Image with Dietary Badge */}
-      <div className="relative aspect-[4/3] w-full overflow-hidden bg-brand-cream/60">
-        <Image
-          src={imgSrc}
-          alt={product.name}
-          fill
-          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-          className="object-cover object-center group-hover:scale-105 transition-transform duration-500 ease-out"
-          onError={() => setImgSrc(FALLBACK_CAKE)}
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-
-        {/* Dietary Pill (Pure Veg / Eggless Indicator) */}
-        <div className="absolute top-2.5 left-2.5 flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/95 backdrop-blur-xs shadow-xs text-[10px] font-semibold">
-          <span
-            className={`w-1.5 h-1.5 rounded-full ${
-              product.isEggless ? 'bg-emerald-600 ring-1 ring-emerald-600/20' : 'bg-amber-600'
-            }`}
+    <div
+      onClick={() => onSelect(product)}
+      className="group cursor-pointer flex flex-col justify-between overflow-hidden bg-white border border-brand-border/70 hover:border-[#C5A880]/60 rounded-2xl sm:rounded-3xl shadow-soft hover:shadow-elevated transition-all duration-300 hover:-translate-y-1 relative"
+    >
+      <div>
+        {/* Crisp 1:1 Aspect Ratio Photo with Zoom Effect */}
+        <div className="relative aspect-square w-full overflow-hidden bg-[#FAF7F2]">
+          <Image
+            src={imgSrc}
+            alt={product.name}
+            fill
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            className="object-cover object-center group-hover:scale-108 transition-transform duration-700 ease-out"
+            onError={() => setImgSrc(FALLBACK_CAKE)}
           />
-          <span className={product.isEggless ? 'text-emerald-800' : 'text-amber-900'}>
-            {product.isEggless ? 'Eggless' : 'Contains Egg'}
-          </span>
-        </div>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
-        {/* Price Pill */}
-        <div className="absolute bottom-2.5 right-2.5 px-2.5 py-0.5 rounded-full bg-brand-espresso/90 text-white font-serif font-bold text-xs shadow-soft backdrop-blur-xs">
-          ₹{product.price}
-        </div>
-      </div>
-
-      {/* Content Container */}
-      <div className="p-3.5 sm:p-4 flex flex-col flex-1">
-        {/* Category Label */}
-        {(product.categoryName || product.category) && (
-          <span className="text-[9px] uppercase font-bold tracking-wider text-brand-plum">
-            {product.categoryName || product.category?.replace(/_/g, ' ').toLowerCase()}
-          </span>
-        )}
-
-        {/* Title */}
-        <h3 className="font-serif font-bold text-sm sm:text-base text-brand-espresso mt-0.5 line-clamp-1 group-hover:text-brand-plum transition-colors">
-          {product.name}
-        </h3>
-
-        {/* Description */}
-        <p className="text-[11px] text-brand-muted mt-1 line-clamp-2 flex-1 leading-relaxed">
-          {product.description || 'Delicious handcrafted artisan creation made with premium fresh ingredients.'}
-        </p>
-
-        {/* Meta Specs */}
-        <div className="mt-2.5 pt-2 border-t border-brand-border/60 flex items-center justify-between text-[11px] text-brand-muted">
-          {product.weightGrams ? (
-            <span className="text-[10px] text-brand-espresso/80 font-medium">
-              {product.weightGrams >= 1000 ? `${product.weightGrams / 1000} kg` : `${product.weightGrams}g`}
+          {/* Top-Left: VEG / Non-Veg Indicator Badge */}
+          <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/95 backdrop-blur-md shadow-xs text-[10px] font-bold z-10 border border-brand-border/40">
+            <span
+              className={`w-2 h-2 rounded-full ${
+                product.isEggless ? 'bg-emerald-600 ring-2 ring-emerald-600/20' : 'bg-amber-600 ring-2 ring-amber-600/20'
+              }`}
+            />
+            <span className={product.isEggless ? 'text-emerald-800' : 'text-amber-900'}>
+              {product.isEggless ? 'VEG' : 'NON-VEG'}
             </span>
-          ) : (
-            <span className="text-[10px] text-brand-espresso/80 font-medium">Fresh Baked</span>
-          )}
+          </div>
 
-          {product.preparationTimeHours && (
-            <span className="flex items-center gap-1 text-[10px]">
-              <Clock className="w-2.5 h-2.5 text-brand-plum" />
-              {product.preparationTimeHours}h notice
-            </span>
-          )}
-        </div>
-
-        {/* In-Store Action */}
-        <div className="mt-3">
-          <Button
-            onClick={() => onSelect(product)}
-            className="w-full justify-center gap-1 text-xs py-1.5 h-8"
-            size="sm"
+          {/* Top-Right: Wishlist Heart Icon */}
+          <button
+            type="button"
+            onClick={handleToggleFavorite}
+            aria-label="Save to favorites"
+            className={`absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-md shadow-xs transition-all z-10 cursor-pointer ${
+              isFav
+                ? 'bg-rose-50 text-rose-600 border border-rose-200 scale-105'
+                : 'bg-white/90 text-brand-muted hover:text-rose-500 hover:bg-white hover:scale-110 border border-brand-border/40'
+            }`}
           >
-            <Plus className="w-3 h-3" />
-            <span>Customize & Order</span>
-          </Button>
+            <Heart className={`w-4 h-4 ${isFav ? 'fill-rose-500 text-rose-500' : ''}`} />
+          </button>
+        </div>
+
+        {/* Card Content */}
+        <div className="p-3.5 sm:p-4 space-y-2">
+          {/* Category & Rating Row */}
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-[#C5A880] truncate">
+              {product.categoryName || product.category?.replace(/_/g, ' ') || 'Artisanal Cake'}
+            </span>
+
+            <div className="inline-flex items-center gap-1 text-[11px] font-bold text-brand-espresso bg-amber-50/80 px-2 py-0.5 rounded-full border border-amber-200/60 shrink-0">
+              <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
+              <span>4.8</span>
+              <span className="text-[10px] text-brand-muted font-normal">(24)</span>
+            </div>
+          </div>
+
+          {/* Product Title */}
+          <h3 className="font-serif font-bold text-sm sm:text-base text-[#2C1A1D] line-clamp-1 group-hover:text-brand-plum transition-colors">
+            {product.name}
+          </h3>
+
+          {/* Flavor Descriptor Chips */}
+          <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+            {flavorChips.map((chip, idx) => (
+              <span
+                key={idx}
+                className="text-[10px] font-medium text-brand-muted bg-[#FAF7F2] border border-brand-border/60 px-2 py-0.5 rounded-md"
+              >
+                {chip}
+              </span>
+            ))}
+            {product.weightGrams ? (
+              <span className="text-[10px] font-medium text-brand-muted bg-[#FAF7F2] border border-brand-border/60 px-2 py-0.5 rounded-md">
+                {product.weightGrams >= 1000 ? `${product.weightGrams / 1000}kg` : `${product.weightGrams}g`}
+              </span>
+            ) : null}
+          </div>
+
+          {/* Prominent Price */}
+          <div className="pt-1 flex items-baseline gap-1">
+            <span className="font-serif font-bold text-lg sm:text-xl text-[#2C1A1D]">
+              ₹{product.price}
+            </span>
+            <span className="text-[11px] text-brand-muted font-normal">
+              {product.weightGrams ? `/ ${product.weightGrams >= 1000 ? `${product.weightGrams / 1000}kg` : `${product.weightGrams}g`}` : ''}
+            </span>
+          </div>
         </div>
       </div>
-    </Card>
+
+      {/* Dual CTA Actions */}
+      <div className="p-3.5 sm:p-4 pt-0 grid grid-cols-2 gap-2 mt-2">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelect(product);
+          }}
+          className="w-full inline-flex items-center justify-center gap-1 px-2.5 py-2 rounded-xl border border-brand-border/80 hover:border-brand-plum hover:bg-brand-blush/40 text-brand-espresso text-xs font-semibold transition-all active:scale-95"
+        >
+          <SlidersHorizontal className="w-3.5 h-3.5 text-brand-plum" />
+          <span>Customize</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={handleQuickAdd}
+          className={`w-full inline-flex items-center justify-center gap-1 px-2.5 py-2 rounded-xl text-white text-xs font-bold transition-all shadow-xs active:scale-95 ${
+            isAdded
+              ? 'bg-emerald-600 hover:bg-emerald-700'
+              : 'bg-[#5C1D2E] hover:bg-[#4a1525]'
+          }`}
+        >
+          {isAdded ? (
+            <>
+              <Check className="w-3.5 h-3.5" />
+              <span>Added!</span>
+            </>
+          ) : (
+            <>
+              <ShoppingBag className="w-3.5 h-3.5" />
+              <span>Add to Cart</span>
+            </>
+          )}
+        </button>
+      </div>
+    </div>
   );
 };

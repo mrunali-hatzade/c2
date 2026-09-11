@@ -37,6 +37,8 @@ public class ProductService {
         product.setShop(shop);
         product.setName(request.getName());
         product.setDescription(request.getDescription());
+        product.setIngredients(request.getIngredients());
+        product.setAllergens(request.getAllergens());
         product.setPrice(request.getPrice());
         product.setImageUrl(request.getImageUrl());
         product.setAvailability(request.getAvailability() != null ? request.getAvailability() : true);
@@ -87,6 +89,8 @@ public class ProductService {
 
         product.setName(request.getName());
         product.setDescription(request.getDescription());
+        product.setIngredients(request.getIngredients());
+        product.setAllergens(request.getAllergens());
         product.setPrice(request.getPrice());
         product.setImageUrl(request.getImageUrl());
         if (request.getAvailability() != null) {

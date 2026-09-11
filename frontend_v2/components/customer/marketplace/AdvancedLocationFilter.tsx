@@ -1,10 +1,10 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect } from 'react';
 import { MapPin, Navigation, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
-// Mock hierarchical data for cascading dropdowns
+// Hierarchical data for cascading dropdowns
 const LOCATION_HIERARCHY: Record<string, Record<string, Record<string, string[]>>> = {
   Maharashtra: {
     Pune: {
@@ -17,6 +17,9 @@ const LOCATION_HIERARCHY: Record<string, Record<string, Record<string, string[]>
     },
     Nagpur: {
       'Nagpur Urban': ['Dharampeth', 'Sitabuldi', 'Sadar'],
+    },
+    Bhandara: {
+      'Bhandara City': ['Rajiv Gandhi Chowk', 'Khat Road', 'Tumsar Road', 'Pauni'],
     },
   },
   Karnataka: {
@@ -143,7 +146,7 @@ export const AdvancedLocationFilter: React.FC<AdvancedLocationFilterProps> = ({
               setCity('');
               setArea('');
             }}
-            className="w-full h-10 px-3 rounded-xl border border-brand-border/80 bg-brand-cream-light/30 text-sm focus:outline-none focus:border-brand-plum focus:ring-1 focus:ring-brand-plum transition-all"
+            className="w-full h-10 px-3 rounded-xl border border-brand-border/80 bg-brand-cream-light/30 text-sm focus:outline-none focus:border-brand-plum focus:ring-1 focus:ring-brand-plum transition-all cursor-pointer"
           >
             <option value="">All States</option>
             {states.map((s) => (
@@ -163,7 +166,7 @@ export const AdvancedLocationFilter: React.FC<AdvancedLocationFilterProps> = ({
               setArea('');
             }}
             disabled={!state}
-            className="w-full h-10 px-3 rounded-xl border border-brand-border/80 bg-brand-cream-light/30 text-sm focus:outline-none focus:border-brand-plum focus:ring-1 focus:ring-brand-plum transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full h-10 px-3 rounded-xl border border-brand-border/80 bg-brand-cream-light/30 text-sm focus:outline-none focus:border-brand-plum focus:ring-1 focus:ring-brand-plum transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
             <option value="">All Districts</option>
             {districts.map((d) => (
@@ -182,7 +185,7 @@ export const AdvancedLocationFilter: React.FC<AdvancedLocationFilterProps> = ({
               setArea('');
             }}
             disabled={!district}
-            className="w-full h-10 px-3 rounded-xl border border-brand-border/80 bg-brand-cream-light/30 text-sm focus:outline-none focus:border-brand-plum focus:ring-1 focus:ring-brand-plum transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full h-10 px-3 rounded-xl border border-brand-border/80 bg-brand-cream-light/30 text-sm focus:outline-none focus:border-brand-plum focus:ring-1 focus:ring-brand-plum transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
             <option value="">All Cities</option>
             {cities.map((c) => (
@@ -198,7 +201,7 @@ export const AdvancedLocationFilter: React.FC<AdvancedLocationFilterProps> = ({
             value={area}
             onChange={(e) => setArea(e.target.value)}
             disabled={!city}
-            className="w-full h-10 px-3 rounded-xl border border-brand-border/80 bg-brand-cream-light/30 text-sm focus:outline-none focus:border-brand-plum focus:ring-1 focus:ring-brand-plum transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full h-10 px-3 rounded-xl border border-brand-border/80 bg-brand-cream-light/30 text-sm focus:outline-none focus:border-brand-plum focus:ring-1 focus:ring-brand-plum transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
             <option value="">All Villages / Areas</option>
             {areas.map((a) => (
@@ -215,7 +218,7 @@ export const AdvancedLocationFilter: React.FC<AdvancedLocationFilterProps> = ({
         </p>
         <div className="flex items-center gap-2 text-xs">
           <span className="text-brand-muted">Active filters:</span>
-          <span className="font-medium bg-brand-cream px-2 py-0.5 rounded text-brand-espresso border border-brand-border/50">
+          <span className="font-medium bg-brand-cream px-2.5 py-0.5 rounded-full text-brand-espresso border border-brand-border/50">
             {getActiveFilterLabel()}
           </span>
         </div>

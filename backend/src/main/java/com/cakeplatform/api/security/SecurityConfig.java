@@ -57,6 +57,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/health").permitAll()
                         .requestMatchers("/api/storefront/**").permitAll()
                         .requestMatchers("/api/webhooks/**").permitAll()
+                        .requestMatchers("/api/contact/enquiries").permitAll()
                         .requestMatchers("/uploads/**").permitAll()   // static media — no JWT needed
                         .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated()

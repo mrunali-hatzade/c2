@@ -3,6 +3,7 @@ import './globals.css';
 import { AuthProvider } from '@/lib/auth/AuthContext';
 import { ToastProvider } from '@/components/common/Toast';
 import { CartProvider } from '@/context/CartContext';
+import { FavoritesProvider } from '@/context/FavoritesContext';
 
 export const metadata: Metadata = {
   title: 'CakeStore — Artisanal Bakery SaaS Platform',
@@ -19,7 +20,9 @@ export default function RootLayout({
       <body className="min-h-screen bg-brand-cream-light font-sans text-brand-espresso antialiased">
         <AuthProvider>
           <ToastProvider>
-            <CartProvider>{children}</CartProvider>
+            <CartProvider>
+              <FavoritesProvider>{children}</FavoritesProvider>
+            </CartProvider>
           </ToastProvider>
         </AuthProvider>
       </body>

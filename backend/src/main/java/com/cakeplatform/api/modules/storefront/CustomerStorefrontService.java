@@ -34,8 +34,10 @@ public class CustomerStorefrontService {
     private final OrderRepository orderRepository;
     private final com.cakeplatform.api.modules.shop.CouponRepository couponRepository;
     private final com.cakeplatform.api.modules.notification.NotificationService notificationService;
+    private final com.cakeplatform.api.modules.notification.AdminNotificationService adminNotificationService;
     private final com.cakeplatform.api.modules.interaction.CustomCakeRequestRepository customCakeRequestRepository;
     private final com.cakeplatform.api.modules.product.ProductCategoryRepository categoryRepository;
+    private final com.cakeplatform.api.modules.shop.ShopDeliverySlotRepository deliverySlotRepository;
 
     private Shop getActiveShop(Long shopId) {
         Shop shop = shopRepository.findById(shopId)
@@ -106,9 +108,14 @@ public class CustomerStorefrontService {
     }
 
 
-    public List<StorefrontDeliverySlotResponse> getShopDeliverySlots(Long shopId) {
+    public List<StorefrontDeliverySlotResponse> getShopDeliverySlots(Long shopId, java.time.LocalDate deliveryDate) {
         Shop shop = getActiveShop(shopId);
-        return shop.getDeliverySlots().stream()
+        List<com.cakeplatform.api.modules.shop.ShopDeliverySlot> slots = shop.getDeliverySlots();
+        if (slots == null || slots.isEmpty()) {
+            slots = deliverySlotRepository.findByShopIdAndIsActiveTrue(shopId);
+        }
+
+        return slots.stream()
                 .filter(com.cakeplatform.api.modules.shop.ShopDeliverySlot::getIsActive)
                 .map(slot -> {
                     StorefrontDeliverySlotResponse response = new StorefrontDeliverySlotResponse();
@@ -116,9 +123,27 @@ public class CustomerStorefrontService {
                     response.setDayOfWeek(slot.getDayOfWeek());
                     response.setStartTime(slot.getStartTime());
                     response.setEndTime(slot.getEndTime());
+                    int max = slot.getMaxOrders() != null ? slot.getMaxOrders() : 10;
+                    response.setMaxOrders(max);
+
+                    if (deliveryDate != null) {
+                        long booked = orderRepository.countActiveOrdersForSlotAndDate(slot.getId(), deliveryDate);
+                        int remaining = (int) Math.max(0, max - booked);
+                        response.setBookedOrders((int) booked);
+                        response.setRemainingCapacity(remaining);
+                        response.setAvailable(remaining > 0);
+                    } else {
+                        response.setAvailable(true);
+                        response.setRemainingCapacity(max);
+                        response.setBookedOrders(0);
+                    }
                     return response;
                 })
                 .collect(Collectors.toList());
+    }
+
+    public List<StorefrontDeliverySlotResponse> getShopDeliverySlots(Long shopId) {
+        return getShopDeliverySlots(shopId, null);
     }
 
     @org.springframework.cache.annotation.Cacheable(value = "shopProducts", key = "#shopId")
@@ -135,16 +160,53 @@ public class CustomerStorefrontService {
     @Transactional
     public Order placeGuestOrder(Long shopId, GuestOrderRequest request) {
         Shop shop = getActiveShop(shopId);
+
+        if (request.getDeliveryDate() == null) {
+            throw new IllegalArgumentException("Delivery date is required");
+        }
+        if (request.getDeliveryDate().isBefore(java.time.LocalDate.now())) {
+            throw new IllegalArgumentException("Delivery date cannot be in the past");
+        }
         
         com.cakeplatform.api.modules.shop.ShopDeliverySlot slot = null;
         if (request.getDeliverySlotId() != null) {
-            slot = shop.getDeliverySlots().stream()
-                .filter(s -> s.getId().equals(request.getDeliverySlotId()) && s.getIsActive())
-                .findFirst()
-                .orElseThrow(() -> new RuntimeException("Invalid or inactive delivery slot"));
-                
-            // In a real production system, you'd check orderRepository.countByDeliveryDateAndSlot(request.getDeliveryDate(), slot.getId())
-            // and compare it against slot.getMaxOrders().
+            // Pessimistic Row Lock with strict tenant isolation: locks slot row for (slotId, shopId)
+            if (deliverySlotRepository != null) {
+                slot = deliverySlotRepository.findByIdAndShopIdWithLock(request.getDeliverySlotId(), shopId).orElse(null);
+            }
+            if (slot == null && shop.getDeliverySlots() != null) {
+                slot = shop.getDeliverySlots().stream()
+                        .filter(s -> s.getId() != null && s.getId().equals(request.getDeliverySlotId())
+                                && (s.getShop() == null || s.getShop().getId() == null || s.getShop().getId().equals(shopId)))
+                        .findFirst().orElse(null);
+            }
+            if (slot == null) {
+                throw new IllegalArgumentException("Delivery slot not found or does not belong to this shop");
+            }
+
+            if (!Boolean.TRUE.equals(slot.getIsActive())) {
+                throw new IllegalArgumentException("Selected delivery slot is currently inactive");
+            }
+
+            // Validate day of week match (if slot specifies a day other than EVERYDAY/ALL)
+            String slotDay = slot.getDayOfWeek();
+            if (slotDay != null && !slotDay.equalsIgnoreCase("EVERYDAY") && !slotDay.equalsIgnoreCase("ALL")) {
+                String requestedDay = request.getDeliveryDate().getDayOfWeek().name();
+                if (!slotDay.equalsIgnoreCase(requestedDay)) {
+                    throw new IllegalArgumentException("Delivery slot is for " + slotDay + ", but selected date is a " + requestedDay);
+                }
+            }
+
+            // Authoritative database check under row lock
+            long bookedCount = (orderRepository != null && slot.getId() != null)
+                    ? orderRepository.countActiveOrdersForSlotAndDate(slot.getId(), request.getDeliveryDate())
+                    : 0;
+            int maxOrders = slot.getMaxOrders() != null ? slot.getMaxOrders() : 10;
+            if (bookedCount >= maxOrders) {
+                throw new com.cakeplatform.api.exception.DeliverySlotFullException(
+                        "This delivery slot is fully booked. Please select another slot."
+                );
+            }
         }
 
         Order order = new Order();
@@ -294,15 +356,41 @@ public class CustomerStorefrontService {
 
         Order savedOrder = orderRepository.save(order);
 
-        // Send Notification
-        notificationService.createNotification(
-                shop.getOwner(),
-                com.cakeplatform.api.modules.notification.NotificationType.NEW_ORDER,
-                "New Order Received!",
-                "You have received a new order (" + savedOrder.getOrderNumber() + ") from " + savedOrder.getCustomerName(),
-                savedOrder.getId().toString(),
-                true
-        );
+        // Send Notification to Owner
+        if (notificationService != null && shop.getOwner() != null) {
+            try {
+                notificationService.createNotification(
+                        shop.getOwner(),
+                        com.cakeplatform.api.modules.notification.NotificationType.NEW_ORDER,
+                        "New Order Received!",
+                        "You have received a new order (" + savedOrder.getOrderNumber() + ") from " + savedOrder.getCustomerName(),
+                        savedOrder.getId() != null ? savedOrder.getId().toString() : "0",
+                        true
+                );
+            } catch (Exception ignored) {
+                // Safe failure isolation
+            }
+        }
+
+        // Dispatch Admin Notification (NEW_ORDER)
+        try {
+            adminNotificationService.dispatchAdminNotification(
+                    com.cakeplatform.api.modules.notification.AdminNotificationType.NEW_ORDER,
+                    "New Order Placed: " + savedOrder.getOrderNumber(),
+                    String.format("Order %s (₹%s) placed at %s by %s.",
+                            savedOrder.getOrderNumber(),
+                            savedOrder.getTotalAmount(),
+                            shop.getBusinessName(),
+                            savedOrder.getCustomerName()),
+                    com.cakeplatform.api.modules.notification.AdminNotificationPriority.NORMAL,
+                    com.cakeplatform.api.modules.notification.AdminNotificationCategory.ORDERS,
+                    savedOrder.getOrderNumber(),
+                    "ORDER",
+                    "/admin/shops/" + shop.getId()
+            );
+        } catch (Exception ignored) {
+            // Safe failure isolation
+        }
         
         // Send SMS to Customer
         try {
@@ -384,17 +472,19 @@ public class CustomerStorefrontService {
 
         com.cakeplatform.api.modules.interaction.CustomCakeRequest saved = customCakeRequestRepository.save(cakeRequest);
 
-        try {
-            notificationService.createNotification(
-                    shop.getOwner(),
-                    com.cakeplatform.api.modules.notification.NotificationType.CUSTOM_ORDER_REQUEST,
-                    "Product Cake Enquiry",
-                    "New enquiry received for '" + product.getName() + "' from " + request.getCustomerName(),
-                    saved.getId().toString(),
-                    true
-            );
-        } catch (Exception ignored) {
-            // Do not abort customer enquiry if owner notification dispatch fails
+        if (notificationService != null && shop.getOwner() != null) {
+            try {
+                notificationService.createNotification(
+                        shop.getOwner(),
+                        com.cakeplatform.api.modules.notification.NotificationType.CUSTOM_ORDER_REQUEST,
+                        "Product Cake Enquiry",
+                        "New enquiry received for '" + product.getName() + "' from " + request.getCustomerName(),
+                        saved.getId() != null ? saved.getId().toString() : "0",
+                        true
+                );
+            } catch (Exception ignored) {
+                // Do not abort customer enquiry if owner notification dispatch fails
+            }
         }
 
         return saved;
@@ -506,5 +596,26 @@ public class CustomerStorefrontService {
                 .newSubtotal(newSubtotal)
                 .message("Coupon applied successfully")
                 .build();
+    }
+
+    public List<com.cakeplatform.api.modules.storefront.dto.PublicCouponResponse> getPublicShopCoupons(Long shopId) {
+        getActiveShop(shopId);
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        List<com.cakeplatform.api.modules.shop.Coupon> coupons = couponRepository.findByShopId(shopId);
+
+        return coupons.stream()
+                .filter(c -> Boolean.TRUE.equals(c.getIsActive()))
+                .filter(c -> c.getStartDate() == null || !c.getStartDate().isAfter(now))
+                .filter(c -> c.getExpiryDate() == null || !c.getExpiryDate().isBefore(now))
+                .filter(c -> c.getUsageLimit() == null || c.getUsedCount() < c.getUsageLimit())
+                .map(c -> com.cakeplatform.api.modules.storefront.dto.PublicCouponResponse.builder()
+                        .code(c.getCode())
+                        .discountType(c.getDiscountType())
+                        .discountValue(c.getDiscountValue())
+                        .minOrderValue(c.getMinOrderValue())
+                        .maxDiscountCap(c.getMaxDiscountCap())
+                        .expiryDate(c.getExpiryDate())
+                        .build())
+                .collect(java.util.stream.Collectors.toList());
     }
 }

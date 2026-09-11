@@ -230,5 +230,10 @@ export const ownerApi = {
   }): Promise<any> => {
     return apiClient.post('/api/owner/payments/verify-subscription', payload);
   },
+
+  deleteAccount: async (data: { password: string; confirmationText: string }): Promise<{ success: boolean; message: string }> => {
+    return apiClient.post<{ success: boolean; message: string }>('/api/owner/account/delete', data);
+  },
 };
+
 

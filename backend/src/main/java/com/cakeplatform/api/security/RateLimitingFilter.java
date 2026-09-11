@@ -90,6 +90,8 @@ public class RateLimitingFilter implements Filter {
                 || uri.contains("/create-payment-order")
                 || uri.contains("/coupons/validate")
                 || uri.endsWith("/enquiry")
+                || uri.startsWith("/api/contact/enquiries")
+                || uri.startsWith("/api/owner/feedback")
                 || uri.startsWith("/api/owner/media/upload");
     }
 

@@ -74,6 +74,8 @@ export default function OwnerProductsPage() {
   const [isEggless, setIsEggless] = useState(true);
   const [inStock, setInStock] = useState(true);
   const [imageUrl, setImageUrl] = useState(PRESET_IMAGES[0].url);
+  const [ingredients, setIngredients] = useState('');
+  const [allergens, setAllergens] = useState('');
   const [variants, setVariants] = useState<ProductVariant[]>([]);
 
   // Inline Category Creator inside Product Modal
@@ -131,6 +133,8 @@ export default function OwnerProductsPage() {
     setInStock(true);
     setImageUrl(PRESET_IMAGES[0].url);
     setImageTab('url');
+    setIngredients('');
+    setAllergens('');
     setVariants([
       { name: '500g', price: 450, isAvailable: true },
       { name: '1 kg', price: 850, isAvailable: true },
@@ -142,6 +146,8 @@ export default function OwnerProductsPage() {
     setEditingProduct(p);
     setName(p.name);
     setDescription(p.description || '');
+    setIngredients(p.ingredients || '');
+    setAllergens(p.allergens || '');
     setPrice(String(p.price));
     setSelectedCategoryId(p.categoryId ? String(p.categoryId) : '');
     setInlineCatOpen(false);
@@ -223,6 +229,8 @@ export default function OwnerProductsPage() {
     const productPayload: CreateProductRequest = {
       name,
       description,
+      ingredients: ingredients.trim() || null,
+      allergens: allergens.trim() || null,
       price: Number(price),
       categoryId: selectedCategoryId ? Number(selectedCategoryId) : null,
       isEggless,
@@ -548,6 +556,42 @@ export default function OwnerProductsPage() {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
+
+          {/* Ingredients */}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <label className="block text-sm font-medium text-brand-espresso">
+                Ingredients <span className="text-xs text-brand-muted font-normal">(Optional)</span>
+              </label>
+              <span className="text-[11px] text-brand-muted">{ingredients.length}/1000</span>
+            </div>
+            <textarea
+              rows={3}
+              maxLength={1000}
+              placeholder="Enter the ingredients used in this cake (e.g. Dutch cocoa powder, Belgian couverture chocolate, fresh dairy cream, organic wheat flour)..."
+              value={ingredients}
+              onChange={(e) => setIngredients(e.target.value)}
+              className="w-full px-3.5 py-2.5 bg-white rounded-xl border border-brand-border text-brand-espresso text-sm placeholder:text-brand-muted focus:outline-none focus:ring-2 focus:ring-brand-plum/20 focus:border-brand-plum transition-all resize-none"
+            />
+          </div>
+
+          {/* Allergen Information */}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <label className="block text-sm font-medium text-brand-espresso">
+                Allergen Information <span className="text-xs text-brand-muted font-normal">(Optional)</span>
+              </label>
+              <span className="text-[11px] text-brand-muted">{allergens.length}/500</span>
+            </div>
+            <textarea
+              rows={2}
+              maxLength={500}
+              placeholder="Example: Contains dairy, gluten, nuts..."
+              value={allergens}
+              onChange={(e) => setAllergens(e.target.value)}
+              className="w-full px-3.5 py-2.5 bg-white rounded-xl border border-brand-border text-brand-espresso text-sm placeholder:text-brand-muted focus:outline-none focus:ring-2 focus:ring-brand-plum/20 focus:border-brand-plum transition-all resize-none"
+            />
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input

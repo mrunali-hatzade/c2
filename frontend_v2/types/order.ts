@@ -54,6 +54,7 @@ export interface GuestOrderRequest {
   customerName: string;
   customerEmail: string;
   customerPhone: string;
+  paymentMethod: 'COD' | 'ONLINE_PAYMENT';
   deliveryAddress: string;
   deliveryDate: string;
   deliverySlotId?: number;
@@ -63,5 +64,9 @@ export interface GuestOrderRequest {
     productId: number;
     quantity: number;
     customMessage?: string;
+    variantId?: number;
+    addonIds?: number[];
+    dietaryPreference?: string;
+    cakeMessage?: string;
   }[];
 }

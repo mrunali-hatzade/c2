@@ -62,5 +62,32 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     @Query("SELECT COUNT(o) FROM Order o WHERE o.shop.id = :shopId AND o.couponCode IS NOT NULL AND o.orderStatus != 'CANCELLED'")
     long countCouponOrdersByShopId(@Param("shopId") Long shopId);
+
+    List<String> CAPACITY_CONSUMING_STATUSES = List.of(
+        "NEW", "CONFIRMED", "PREPARING", "READY", "READY_FOR_PICKUP", "OUT_FOR_DELIVERY", "COMPLETED", "DELIVERED"
+    );
+
+    @Query("SELECT COUNT(o) FROM Order o " +
+           "WHERE o.deliverySlot.id = :slotId " +
+           "  AND o.deliveryDate = :deliveryDate " +
+           "  AND o.orderStatus IN :activeStatuses")
+    long countActiveOrdersForSlotAndDate(
+        @Param("slotId") Long slotId, 
+        @Param("deliveryDate") java.time.LocalDate deliveryDate, 
+        @Param("activeStatuses") java.util.Collection<String> activeStatuses
+    );
+
+    default long countActiveOrdersForSlotAndDate(Long slotId, java.time.LocalDate deliveryDate) {
+        return countActiveOrdersForSlotAndDate(slotId, deliveryDate, CAPACITY_CONSUMING_STATUSES);
+    }
+
+    @Query(value = "SELECT COALESCE(MAX(sub.cnt), 0) FROM (" +
+                   "  SELECT COUNT(o.id) as cnt FROM orders o " +
+                   "  WHERE o.delivery_slot_id = :slotId " +
+                   "    AND o.delivery_date >= CURRENT_DATE " +
+                   "    AND o.order_status IN ('NEW', 'CONFIRMED', 'PREPARING', 'READY', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY', 'COMPLETED', 'DELIVERED') " +
+                   "  GROUP BY o.delivery_date" +
+                   ") sub", nativeQuery = true)
+    int findMaxActiveOrdersOnAnyUpcomingDate(@Param("slotId") Long slotId);
 }
 

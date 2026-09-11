@@ -231,12 +231,14 @@ export default function OwnerSubscriptionPage() {
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
             <div className="text-right sm:pr-4 sm:border-r border-owner-border">
-              <p className="text-2xl font-extrabold font-serif text-brand-espresso">₹350</p>
+              <p className="text-2xl font-extrabold font-serif text-brand-espresso">
+                ₹{(subscription?.plan?.price || subscription?.amount || 999).toLocaleString('en-IN')}
+              </p>
               <p className="text-[11px] text-owner-muted">per month / 0% commission</p>
             </div>
 
             <Button
-              onClick={() => handleRenewPayment(350)}
+              onClick={() => handleRenewPayment(subscription?.plan?.price || subscription?.amount || 999)}
               isLoading={renewing}
               size="lg"
               className="gap-2 shadow-soft"

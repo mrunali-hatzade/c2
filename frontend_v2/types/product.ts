@@ -43,7 +43,8 @@ export interface Product {
   availability?: boolean;
   preparationTimeHours?: number;
   weightGrams?: number;
-  minAdvanceHours?: number;
+  ingredients?: string | null;
+  allergens?: string | null;
   variants?: ProductVariant[];
   addons?: ProductAddon[];
 }
@@ -51,6 +52,8 @@ export interface Product {
 export interface CreateProductRequest {
   name: string;
   description?: string;
+  ingredients?: string | null;
+  allergens?: string | null;
   price: number;
   categoryId?: number | null;
   category?: string;
